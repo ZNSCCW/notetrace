@@ -1,0 +1,24 @@
+# ===== Java / Maven =====
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# ===== 本地配置（含 API key，永不提交）=====
+application-local.yml
+application-local.properties
+
+# ===== 数据目录（真实笔记，永不入库）=====
+data/
+*.db
+
+# ===== 日志与临时文件 =====
+*.log
+logs/
+tmp/

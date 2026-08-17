@@ -1,0 +1,17 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: notetrace
+  datasource:
+    url: jdbc:postgresql://localhost:5433/notetrace
+    username: notetrace
+    password: notetrace_dev
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
