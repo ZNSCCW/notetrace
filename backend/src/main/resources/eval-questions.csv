@@ -1,0 +1,21 @@
+question,expected_doc,expected_section
+线程池有哪 7 个核心参数,java-并发.md,线程池/核心参数
+线程池默认拒绝策略是什么,java-并发.md,线程池/拒绝策略
+CallerRunsPolicy 有什么行为,java-并发.md,线程池/拒绝策略
+synchronized 和 ReentrantLock 有什么区别,java-并发.md,锁/synchronized vs ReentrantLock
+volatile 能保证原子性吗,java-并发.md,锁/volatile 的作用
+ArrayList 的扩容机制是什么,java-集合.md,ArrayList
+HashMap 的默认容量和负载因子是多少,java-集合.md,HashMap/底层结构
+HashMap 链表什么时候转红黑树,java-集合.md,HashMap/底层结构
+HashMap 扩容阈值怎么计算,java-集合.md,HashMap/扩容机制
+JDK8 为什么没有循环链表问题,java-集合.md,HashMap/为什么 HashMap 线程不安全
+ConcurrentHashMap JDK8 怎么保证线程安全,java-集合.md,ConcurrentHashMap
+分段锁 Segment 是什么,java-集合.md,ConcurrentHashMap
+JWT token 校验什么内容,spring-security.md,鉴权流程/JWT 认证过滤器
+Spring Security 常见坑有哪些,spring-security.md,鉴权流程/常见坑
+BCryptPasswordEncoder 为什么每次加密结果不同,spring-security.md,密码加密
+JWT 的缺点是什么,spring-security.md,会话
+分布式环境 session 怎么处理,spring-security.md,会话
+线程池拒绝策略有哪几种,java-并发.md,线程池/拒绝策略
+HashMap 为什么线程不安全,java-集合.md,HashMap/为什么 HashMap 线程不安全
+OncePerRequestFilter 的作用,spring-security.md,鉴权流程/JWT 认证过滤器

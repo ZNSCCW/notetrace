@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>入库状态 · NoteTrace 知溯</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; color: #222; }
+        h1 { font-size: 22px; }
+        nav a { margin-right: 16px; color: #2d6cdf; text-decoration: none; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+        th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; }
+        th { color: #666; font-weight: 600; }
+        .ok { color: #1a9c4b; }
+        .fail { color: #d03050; }
+        .empty { color: #888; margin-top: 20px; }
+    </style>
+</head>
+<body>
+<h1>入库状态</h1>
+<nav><a href="/">返回问答</a></nav>
+
+<table th:if="${!documents.isEmpty()}">
+    <tr><th>文档</th><th>状态</th><th>chunks</th><th>更新时间</th></tr>
+    <tr th:each="d : ${documents}">
+        <td th:text="${d.doc.sourcePath}"></td>
+        <td>
+            <span th:if="${d.doc.status == 'PROCESSED'}" class="ok" th:text="已处理">已处理</span>
+            <span th:if="${d.doc.status != 'PROCESSED'}" class="fail" th:text="${d.doc.status}">未知</span>
+        </td>
+        <td th:text="${d.chunkCount}"></td>
+        <td th:text="${#temporals.format(d.doc.updatedAt, 'yyyy-MM-dd HH:mm')}"></td>
+    </tr>
+</table>
+<p class="empty" th:if="${documents.isEmpty()}">暂无入库文档。请把 Markdown/文本笔记放入 data/notes 目录后重启应用，或检查入库目录配置。</p>
+</body>
+</html>

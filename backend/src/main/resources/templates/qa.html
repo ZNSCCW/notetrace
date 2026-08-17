@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>NoteTrace 知溯 · AI 个人知识库</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; color: #222; }
+        h1 { font-size: 22px; }
+        h1 small { color: #888; font-weight: normal; font-size: 13px; }
+        nav a { margin-right: 16px; color: #2d6cdf; text-decoration: none; font-size: 14px; }
+        form { margin: 20px 0; }
+        input[type=text] { width: 72%; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 6px; }
+        button { padding: 10px 22px; font-size: 15px; background: #2d6cdf; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+        .answer { background: #f7f8fa; border-radius: 8px; padding: 16px; white-space: pre-wrap; line-height: 1.7; }
+        .refs { margin-top: 12px; }
+        details { background: #fff; border: 1px solid #e3e6ea; border-radius: 6px; padding: 10px 14px; margin: 8px 0; }
+        summary { cursor: pointer; color: #2d6cdf; font-size: 14px; }
+        pre { white-space: pre-wrap; font-size: 13px; background: #fafbfc; padding: 10px; border-radius: 4px; }
+        .hint { color: #888; font-size: 13px; margin-top: 24px; }
+    </style>
+</head>
+<body>
+<h1>NoteTrace（知溯）<small>AI 个人知识库</small></h1>
+<nav>
+    <a href="/">问答</a>
+    <a href="/documents">入库状态</a>
+</nav>
+
+<form method="post" action="/qa">
+    <input type="text" name="question" th:value="${question}"
+           placeholder="提问，如：线程池的拒绝策略有哪些？">
+    <button type="submit">提问</button>
+</form>
+
+<div class="answer" th:if="${result}" th:text="${result.answer}"></div>
+
+<div class="refs" th:if="${result != null and !result.references.isEmpty()}">
+    <h3>引用来源（点击展开原文核对）</h3>
+    <details th:each="r : ${result.references}">
+        <summary th:text="${r.documentTitle} + ' / ' + ${r.sectionPath} + '（第 ' + ${r.startLine} + '-' + ${r.endLine} + ' 行）'"></summary>
+        <pre th:text="${r.fullContent}"></pre>
+    </details>
+</div>
+
+<p class="hint">回答由 LLM 生成，引用来源已校验，仍建议点击展开核对原文。</p>
+</body>
+</html>
