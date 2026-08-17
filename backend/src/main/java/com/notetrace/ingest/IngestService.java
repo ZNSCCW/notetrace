@@ -89,29 +89,42 @@ public class IngestService {
 
     /** 处理单个文件（hash 相同则跳过）。返回 true 表示已处理。 */
     public boolean ingestFile(Path file) {
+        String content;
+        String hash;
         try {
-            String content = Files.readString(file, StandardCharsets.UTF_8);
-            String hash = sha256(content);
-            String rel = ingestDir.relativize(file).toString().replace('\\', '/');
+            content = Files.readString(file, StandardCharsets.UTF_8);
+            hash = sha256(content);
+        } catch (IOException e) {
+            log.error("读取失败: {}: {}", file, e.getMessage());
+            markFailed(file, null);
+            return false;
+        }
+        final String rel = ingestDir.relativize(file).toString().replace('\\', '/');
+        final String contentFinal = content;
+        final String hashFinal = hash;
 
-            Optional<Document> existing = documentRepository.findBySourcePath(rel);
-            if (existing.isPresent() && existing.get().getFileHash().equals(hash)) {
-                return false; // 未变更，跳过（M2 增量更新基础）
-            }
+        Optional<Document> existing = documentRepository.findBySourcePath(rel);
+        if (existing.isPresent() && existing.get().getFileHash().equals(hashFinal)) {
+            return false; // 未变更，跳过（M2 增量更新基础）
+        }
 
-            List<ChunkPiece> pieces = chunker.chunk(content);
-            transactionTemplate.executeWithoutResult(status -> processDocument(existing, rel, file, hash, pieces));
+        try {
+            List<ChunkPiece> pieces = chunker.chunk(contentFinal);
+            transactionTemplate.executeWithoutResult(status -> processDocument(existing, rel, file, hashFinal, pieces));
             log.info("入库: {} ({} 个 chunk)", rel, pieces.size());
             return true;
         } catch (Exception e) {
             log.error("入库失败: {}: {}", file, e.getMessage());
-            markFailed(file);
+            markFailed(file, hashFinal);
             return false;
         }
     }
 
-    /** 入库失败时写入 FAILED 状态，让入库状态页可见失败文件 */
-    private void markFailed(Path file) {
+    /**
+     * 入库失败时写入 FAILED 状态：入库状态页可见失败文件，且清除旧 chunks
+     * （FAILED 文档不应再检索到过期内容）；记录实际内容 hash，内容回滚后可恢复处理。
+     */
+    private void markFailed(Path file, String fileHash) {
         try {
             String rel = ingestDir.relativize(file).toString().replace('\\', '/');
             Document doc = documentRepository.findBySourcePath(rel).orElseGet(Document::new);
@@ -119,10 +132,11 @@ public class IngestService {
                 doc.setTitle(file.getFileName().toString());
                 doc.setSourcePath(rel);
                 doc.setSourceType(ext(file));
-                doc.setFileHash("failed");
             }
+            doc.setFileHash(fileHash != null ? fileHash : "unreadable");
             doc.setStatus("FAILED");
             documentRepository.save(doc);
+            chunkRepository.deleteByDocumentId(doc.getId());
         } catch (Exception ex) {
             log.warn("标记 FAILED 失败: {}", ex.getMessage());
         }
