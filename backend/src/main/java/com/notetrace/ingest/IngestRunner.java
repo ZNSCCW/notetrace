@@ -4,12 +4,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
  * 应用启动时自动扫描入库（FR-1 启动扫描）。入库失败不影响应用启动。
+ * @Order(1)：先于评估运行器执行，保证 --eval 时库中已有数据。
  */
 @Component
+@Order(1)
 public class IngestRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(IngestRunner.class);

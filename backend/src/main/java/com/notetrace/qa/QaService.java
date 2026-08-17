@@ -35,6 +35,7 @@ public class QaService {
             你是 NoteTrace（知溯）知识库助手。
             回答必须基于用户提供的编号资料 [1]~[K]，每个结论后用对应编号标注来源，如"线程池默认拒绝策略是 AbortPolicy[2]"。
             只能引用资料中真实存在的内容，禁止编造来源。
+            引用编号请写成单个 [n] 形式，不要使用 [1,2] 或 [1-2] 范围写法。
             如果资料不足以回答问题，直接回答"知识库中没有相关内容"，不要编造。
             """;
 
@@ -92,7 +93,12 @@ public class QaService {
         Map<Integer, Reference> refs = new LinkedHashMap<>();
         Matcher m = REF_PATTERN.matcher(answer == null ? "" : answer);
         while (m.find()) {
-            int idx = Integer.parseInt(m.group(1));
+            String num = m.group(1);
+            // 防御：超长数字串（LLM 异常输出）直接跳过，避免 Integer.parseInt 抛异常导致 500
+            if (num.length() > 6) {
+                continue;
+            }
+            int idx = Integer.parseInt(num);
             if (idx >= 1 && idx <= top.size()) {
                 SearchHit h = top.get(idx - 1);
                 refs.putIfAbsent(idx, new Reference(

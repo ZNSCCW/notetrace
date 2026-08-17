@@ -1,11 +1,13 @@
 package com.notetrace.ai.deepseek;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -31,7 +33,13 @@ public class DeepSeekChatProvider implements ChatProvider {
                                 @Value("${notetrace.ai.deepseek.model}") String model,
                                 @Value("${DEEPSEEK_API_KEY:}") String apiKey,
                                 ObjectMapper objectMapper) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        // 连接/读取超时：防止 API 无响应时问答请求无限挂起
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
+                java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(10))
+                        .build());
+        factory.setReadTimeout(Duration.ofSeconds(120));
+        this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
         this.model = model;
         this.apiKey = apiKey;
         this.objectMapper = objectMapper;

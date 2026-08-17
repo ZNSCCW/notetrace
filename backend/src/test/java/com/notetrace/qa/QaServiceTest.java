@@ -55,6 +55,16 @@ class QaServiceTest {
     }
 
     @Test
+    void zeroAndOversizedReferenceNumbersAreIgnoredWithoutCrash() {
+        List<SearchHit> hits = List.of(hit(1, "内容A", 0.9));
+        // [0] 越下界、超长数字串（>6 位）均跳过，[1] 保留——不抛 NumberFormatException
+        List<Reference> refs = QaService.extractValidReferences(
+                "回答[0] 和[99999999999999999999] 还有[1]", hits);
+        assertThat(refs).hasSize(1);
+        assertThat(refs.get(0).chunkId()).isEqualTo(1L);
+    }
+
+    @Test
     void emptySearchResultReturnsFallbackWithoutCallingChat() {
         VectorSearchService search = mock(VectorSearchService.class);
         when(search.search("知识库外的问题", 8)).thenReturn(List.of());

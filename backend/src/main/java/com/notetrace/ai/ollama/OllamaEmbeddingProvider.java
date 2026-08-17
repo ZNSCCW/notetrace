@@ -1,11 +1,13 @@
 package com.notetrace.ai.ollama;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -29,7 +31,13 @@ public class OllamaEmbeddingProvider implements EmbeddingProvider {
     public OllamaEmbeddingProvider(@Value("${notetrace.ai.ollama.base-url}") String baseUrl,
                                    @Value("${notetrace.ai.ollama.model}") String model,
                                    ObjectMapper objectMapper) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        // 连接/读取超时：Ollama 未启动或无响应时快速失败，避免 ingest/QA 无限挂起
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
+                java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(5))
+                        .build());
+        factory.setReadTimeout(Duration.ofSeconds(60));
+        this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
         this.model = model;
         this.objectMapper = objectMapper;
     }

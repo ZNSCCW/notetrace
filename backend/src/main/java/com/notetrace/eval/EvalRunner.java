@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import com.notetrace.search.SearchHit;
@@ -19,8 +20,10 @@ import com.notetrace.search.VectorSearchService;
  * 检索评估运行器（PRD 13.2）：java -jar ... --eval 触发。
  * 读取 eval-questions.csv（问题/期望文档/期望章节），对每条问题跑 Top-5 检索，
  * 检查期望文档是否命中，输出 Top-5 文档命中率——切分/重排策略调整后的回归指标。
+ * @Order(2)：在 IngestRunner 之后执行，避免对空库产出假评估。
  */
 @Component
+@Order(2)
 public class EvalRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(EvalRunner.class);
@@ -38,6 +41,10 @@ public class EvalRunner implements ApplicationRunner {
             return;
         }
         List<EvalItem> items = loadItems();
+        if (items.isEmpty()) {
+            log.warn("评估集为空（eval-questions.csv），跳过评估");
+            return;
+        }
         int hit = 0;
         for (EvalItem item : items) {
             List<SearchHit> top = vectorSearchService.search(item.question(), TOP_K);

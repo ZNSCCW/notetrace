@@ -105,7 +105,26 @@ public class IngestService {
             return true;
         } catch (Exception e) {
             log.error("入库失败: {}: {}", file, e.getMessage());
+            markFailed(file);
             return false;
+        }
+    }
+
+    /** 入库失败时写入 FAILED 状态，让入库状态页可见失败文件 */
+    private void markFailed(Path file) {
+        try {
+            String rel = ingestDir.relativize(file).toString().replace('\\', '/');
+            Document doc = documentRepository.findBySourcePath(rel).orElseGet(Document::new);
+            if (doc.getId() == null) {
+                doc.setTitle(file.getFileName().toString());
+                doc.setSourcePath(rel);
+                doc.setSourceType(ext(file));
+                doc.setFileHash("failed");
+            }
+            doc.setStatus("FAILED");
+            documentRepository.save(doc);
+        } catch (Exception ex) {
+            log.warn("标记 FAILED 失败: {}", ex.getMessage());
         }
     }
 
