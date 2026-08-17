@@ -23,8 +23,8 @@ notetrace:
   ingest:
     dir: ${NOTETRACE_INGEST_DIR:data/notes}   # 入库目录（真实笔记，不进 git）；可用环境变量 NOTETRACE_INGEST_DIR 覆盖
   ai:
-    embedding-provider: mock # mock | ollama（本地 bge-m3，免费）
-    chat-provider: mock      # mock | deepseek
+    embedding-provider: ollama # mock | ollama（本地 bge-m3，免费）
+    chat-provider: deepseek     # mock | deepseek
     ollama:
       base-url: http://localhost:11434
       model: bge-m3
