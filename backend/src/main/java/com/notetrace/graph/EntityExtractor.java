@@ -28,7 +28,12 @@ public class EntityExtractor {
     private static final String SYSTEM = "你是技术概念提取器。只输出 JSON 数组，不要任何其他文字。";
     private static final String PROMPT = """
             从下面的技术笔记中提取核心技术概念（技术名词/框架/术语，如"线程池"、"ReentrantLock"、"HashMap"、"synchronized"）。
-            规则：只输出 JSON 字符串数组，如 ["线程池","ReentrantLock"]；最多 %d 个；按重要程度排序；不要包含笔记标题本身。
+            规则：
+            1. 只输出 JSON 字符串数组，如 ["线程池","ReentrantLock"]；最多 %d 个；按重要程度排序；
+            2. 若下方"已存在的概念"中有与笔记内容匹配的，必须优先复用其原样叫法（保持一致性）；
+            3. 不要包含笔记标题本身。
+
+            已存在的概念：%s
 
             笔记内容：
             %s
@@ -42,15 +47,17 @@ public class EntityExtractor {
         this.objectMapper = objectMapper;
     }
 
-    /** 抽取文档概念；异常/格式错误返回空列表（不阻塞图谱构建） */
-    public List<String> extract(String documentContent) {
+    /** 抽取文档概念；existingConcepts 供 few-shot 复用（跨文档一致性，M4 优化） */
+    public List<String> extract(String documentContent, List<String> existingConcepts) {
         if (documentContent == null || documentContent.isBlank()) {
             return List.of();
         }
         try {
             String truncated = documentContent.length() > MAX_INPUT_CHARS
                     ? documentContent.substring(0, MAX_INPUT_CHARS) : documentContent;
-            String raw = chatRouter.resolve("api").chat(SYSTEM, PROMPT.formatted(MAX_CONCEPTS, truncated));
+            String existing = (existingConcepts == null || existingConcepts.isEmpty())
+                    ? "（无）" : String.join("、", existingConcepts);
+            String raw = chatRouter.resolve("api").chat(SYSTEM, PROMPT.formatted(MAX_CONCEPTS, existing, truncated));
             return parse(raw);
         } catch (Exception e) {
             log.warn("概念抽取失败（降级为空）: {}", e.getMessage());

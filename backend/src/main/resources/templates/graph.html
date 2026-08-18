@@ -21,9 +21,22 @@
 
 <main class="container">
     <h1 class="page-title">知识图谱</h1>
-    <p class="page-desc">主题来自笔记章节路径；概念由 LLM 按文档抽取。点击主题或概念查看关联。</p>
+    <p class="page-desc">主题来自笔记章节路径；概念由 LLM 按文档抽取。图谱可视化 + 树状浏览双视图。</p>
 
-    <div class="graph-cols">
+    <div class="panel">
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+            <h2 class="section-title" style="margin:0;">图谱视图</h2>
+            <input type="text" id="gsearch" class="input" placeholder="搜索节点…" style="max-width:220px; padding:6px 10px; font-size:13px;">
+            <label class="hint" style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="f-topic" checked> 主题</label>
+            <label class="hint" style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="f-note" checked> 笔记</label>
+            <label class="hint" style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="f-concept" checked> 概念</label>
+            <label class="hint" style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="f-orphan"> 隐藏孤立</label>
+        </div>
+        <div id="graph-viz" style="width:100%; height:480px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fff;"></div>
+        <p class="hint" style="margin-top:8px;">节点大小 = 关联数；点击节点跳转到对应主题/概念；可拖拽/缩放。</p>
+    </div>
+
+    <div class="graph-cols" style="margin-top:16px;">
         <div class="panel">
             <h2 class="section-title">主题树（<span th:text="${#lists.size(topics)}">0</span>）</h2>
             <ul class="topic-tree">
@@ -64,6 +77,12 @@
                 <ul class="topic-tree" th:if="${selectedConcept}">
                     <li th:each="n : ${conceptNotes}"><span class="muted" th:text="${n.sourcePath}">笔记</span></li>
                 </ul>
+                <div th:if="${selectedConcept != null and !coOccurring.isEmpty()}" style="margin-top:16px;">
+                    <p class="section-title" th:text="'常与「' + ${selectedConcept} + '」一起出现'">共现</p>
+                    <div class="tags">
+                        <span class="tag" th:each="c : ${coOccurring}"><a th:href="@{/graph(concept=${c.name})}" th:text="${c.name} + '（' + ${c.count} + '）'">概念</a></span>
+                    </div>
+                </div>
             </div>
 
             <div class="panel" style="margin-top:16px;">
@@ -82,6 +101,69 @@
         </div>
     </div>
 </main>
+
+<script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<script>
+(function () {
+    var viz = document.getElementById('graph-viz');
+    if (!viz || typeof vis === 'undefined') { return; }
+    fetch('/api/graph').then(function (r) { return r.json(); }).then(function (data) {
+        var colorMap = { TOPIC: '#2563eb', NOTE: '#9aa3af', CONCEPT: '#15803d' };
+        var nodes = (data.nodes || []).map(function (n) {
+            return {
+                id: n.id,
+                label: n.name.length > 22 ? n.name.slice(0, 22) + '…' : n.name,
+                title: n.name + '（' + (n.degree || 0) + ' 关联）',
+                color: { background: colorMap[n.type] || '#888', border: '#fff' },
+                value: Math.max(3, n.degree || 0),
+                group: n.type,
+                _name: n.name,
+                _degree: n.degree || 0
+            };
+        });
+        var edges = (data.edges || []).map(function (e) {
+            return {
+                from: e.from, to: e.to, width: 1,
+                color: { color: e.type === 'APPEARS_IN' ? '#d1d5db' : '#cbd5e1' }
+            };
+        });
+        var network = new vis.Network(viz, {
+            nodes: new vis.DataSet(nodes),
+            edges: new vis.DataSet(edges)
+        }, {
+            nodes: { font: { size: 12, color: '#1a1d23' }, scaling: { min: 6, max: 28 } },
+            physics: { solver: 'forceAtlas2Based', stabilization: { iterations: 150 } },
+            interaction: { hover: true, tooltipDelay: 100 }
+        });
+        network.on('click', function (p) {
+            if (!p.nodes.length) { return; }
+            var n = nodes.find(function (x) { return x.id === p.nodes[0]; });
+            if (!n) { return; }
+            if (n.group === 'TOPIC') { location.href = '/graph?topic=' + encodeURIComponent(n._name); }
+            else if (n.group === 'CONCEPT') { location.href = '/graph?concept=' + encodeURIComponent(n._name); }
+        });
+        function applyFilter() {
+            var q = (document.getElementById('gsearch').value || '').toLowerCase();
+            var showTopic = document.getElementById('f-topic').checked;
+            var showNote = document.getElementById('f-note').checked;
+            var showConcept = document.getElementById('f-concept').checked;
+            var hideOrphan = document.getElementById('f-orphan').checked;
+            nodes.forEach(function (n) {
+                var typeOk = (n.group === 'TOPIC' && showTopic) || (n.group === 'NOTE' && showNote) || (n.group === 'CONCEPT' && showConcept);
+                var qOk = !q || n._name.toLowerCase().indexOf(q) >= 0;
+                var orphanOk = !hideOrphan || n._degree > 0;
+                n.hidden = !(typeOk && qOk && orphanOk);
+            });
+            nodes.forEach(function (n) { network.body.data.nodes.update(n); });
+            network.redraw();
+        }
+        ['gsearch', 'f-topic', 'f-note', 'f-concept', 'f-orphan'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) { el.addEventListener(id === 'gsearch' ? 'input' : 'change', applyFilter); }
+        });
+    });
+})();
+</script>
 
 </body>
 </html>

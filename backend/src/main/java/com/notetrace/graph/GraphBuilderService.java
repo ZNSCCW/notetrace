@@ -1,5 +1,6 @@
 package com.notetrace.graph;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,10 +104,12 @@ public class GraphBuilderService {
                 "FROM documents d LEFT JOIN chunks c ON c.document_id = d.id " +
                 "GROUP BY d.id");
         int edgeCount = 0;
+        // 已抽概念累积，供后续文档 few-shot 复用（跨文档叫法一致性，M4 优化）
+        java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>();
         for (Map<String, Object> doc : docs) {
             long docId = ((Number) doc.get("id")).longValue();
             String content = (String) doc.get("content");
-            List<String> concepts = entityExtractor.extract(content);
+            List<String> concepts = entityExtractor.extract(content, new ArrayList<>(seen));
             if (concepts.isEmpty()) {
                 continue;
             }
@@ -118,11 +121,12 @@ public class GraphBuilderService {
                 Long conceptId = createNode(concept, "CONCEPT", null);
                 if (conceptId != null && createEdge(conceptId, noteId, "APPEARS_IN")) {
                     edgeCount++;
+                    seen.add(concept);
                 }
             }
         }
         if (edgeCount > 0) {
-            log.info("概念抽取: {} 条概念关联", edgeCount);
+            log.info("概念抽取: {} 条概念关联（累计 {} 个概念）", edgeCount, seen.size());
         }
         return edgeCount;
     }

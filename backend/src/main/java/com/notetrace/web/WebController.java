@@ -16,6 +16,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.notetrace.chunk.ChunkRepository;
@@ -150,6 +151,13 @@ public class WebController {
         }
     }
 
+    /** 图谱可视化数据（JSON，供前端力导向图） */
+    @GetMapping("/api/graph")
+    @ResponseBody
+    public GraphService.GraphData apiGraph() {
+        return graphService.graphData();
+    }
+
     /** 图谱浏览页（FR-14/FR-15）：主题树 + 主题关联笔记 + 概念（M3.1） */
     @GetMapping("/graph")
     public String graph(@RequestParam(name = "topic", required = false) String topic,
@@ -168,6 +176,7 @@ public class WebController {
         model.addAttribute("selectedConcept", concept);
         if (concept != null && !concept.isBlank()) {
             model.addAttribute("conceptNotes", graphService.conceptNotes(concept));
+            model.addAttribute("coOccurring", graphService.coOccurring(concept, 10));
         }
         if (relX != null && !relX.isBlank() && relY != null && !relY.isBlank()) {
             model.addAttribute("relX", relX);

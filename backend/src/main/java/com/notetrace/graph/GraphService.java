@@ -108,6 +108,54 @@ public class GraphService {
                 conceptX, conceptY);
     }
 
+    /** 图可视化数据（M4 优化）：全部节点（含度）+ 全部边 */
+    public record GraphData(List<GraphNode> nodes, List<GraphEdge> edges) {
+    }
+
+    public record GraphNode(Long id, String name, String type, int degree) {
+    }
+
+    public record GraphEdge(Long from, Long to, String type) {
+    }
+
+    public GraphData graphData() {
+        List<GraphNode> nodes = jdbcTemplate.query(
+                """
+                SELECT n.id, n.name, n.node_type,
+                       (SELECT count(*) FROM graph_edges e WHERE e.from_node_id = n.id OR e.to_node_id = n.id) AS degree
+                FROM graph_nodes n ORDER BY n.name
+                """,
+                (rs, i) -> new GraphNode(rs.getLong("id"), rs.getString("name"), rs.getString("node_type"), rs.getInt("degree")));
+        List<GraphEdge> edges = jdbcTemplate.query(
+                "SELECT from_node_id, to_node_id, relation_type FROM graph_edges ORDER BY id",
+                (rs, i) -> new GraphEdge(rs.getLong("from_node_id"), rs.getLong("to_node_id"), rs.getString("relation_type")));
+        return new GraphData(nodes, edges);
+    }
+
+    /** 概念共现推荐（M4 优化）：与指定概念出现在同一篇笔记的其他概念，按共现次数排序 */
+    public List<CoOccurrence> coOccurring(String conceptName, int limit) {
+        if (conceptName == null || conceptName.isBlank()) {
+            return List.of();
+        }
+        return jdbcTemplate.query(
+                """
+                SELECT c2.name, count(*) AS cnt
+                FROM graph_edges e1
+                JOIN graph_edges e2 ON e1.to_node_id = e2.to_node_id
+                JOIN graph_nodes c1 ON c1.id = e1.from_node_id AND c1.node_type = 'CONCEPT' AND c1.name = ?
+                JOIN graph_nodes c2 ON c2.id = e2.from_node_id AND c2.node_type = 'CONCEPT' AND c2.id <> c1.id
+                WHERE e1.relation_type = 'APPEARS_IN' AND e2.relation_type = 'APPEARS_IN'
+                GROUP BY c2.name
+                ORDER BY cnt DESC, c2.name
+                LIMIT ?
+                """,
+                (rs, i) -> new CoOccurrence(rs.getString("name"), rs.getInt("cnt")),
+                conceptName, limit);
+    }
+
+    public record CoOccurrence(String name, int count) {
+    }
+
     /** 主题（含子主题）下关联的所有笔记 */
     public List<Note> topicNotes(String topicPath) {
         if (topicPath == null || topicPath.isBlank()) {
