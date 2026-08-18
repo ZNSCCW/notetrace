@@ -110,7 +110,7 @@ public class WebController {
             Files.createDirectories(ingestDir);
             file.transferTo(target);
             boolean processed = ingestService.ingestFile(target);
-            graphBuilderService.build(); // 图谱同步更新（含新文档主题）
+            rebuildGraphQuietly(); // 图谱同步更新（含新文档主题），失败不拖累上传
             log.info("网页上传: {} (processed={})", name, processed);
         } catch (IOException e) {
             log.error("上传失败: {}", e.getMessage());
@@ -134,9 +134,18 @@ public class WebController {
             log.error("删除磁盘文件失败: {}", e.getMessage());
         }
         documentRepository.findBySourcePath(sourcePath).ifPresent(documentRepository::delete);
-        graphBuilderService.build(); // 图谱同步重建（清除孤儿主题与笔记节点）
+        rebuildGraphQuietly(); // 图谱同步重建（清除孤儿主题与笔记节点），失败不拖累删除
         log.info("网页删除: {}", sourcePath);
         return "redirect:/documents";
+    }
+
+    /** 图谱重建的容错封装：失败仅记日志，不影响上传/删除的成功结果 */
+    private void rebuildGraphQuietly() {
+        try {
+            graphBuilderService.build();
+        } catch (Exception e) {
+            log.warn("图谱重建失败（不影响本次操作）: {}", e.getMessage());
+        }
     }
 
     /** 图谱浏览页（FR-14/FR-15）：主题树 + 主题关联笔记 */

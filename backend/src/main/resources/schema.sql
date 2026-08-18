@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS graph_nodes (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_graph_nodes
     ON graph_nodes (name, node_type, COALESCE(doc_id, 0));
 
+-- 兼容旧库（VARCHAR(500)）：IF NOT EXISTS 不 ALTER 已有表，需显式放宽
+ALTER TABLE graph_nodes ALTER COLUMN name TYPE VARCHAR(2000);
+
 CREATE TABLE IF NOT EXISTS graph_edges (
     id            BIGSERIAL PRIMARY KEY,
     from_node_id  BIGINT NOT NULL REFERENCES graph_nodes(id) ON DELETE CASCADE,
