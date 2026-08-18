@@ -29,3 +29,25 @@ CREATE TABLE IF NOT EXISTS chunks (
 CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON chunks(document_id);
 -- HNSW 余弦距离索引（对应 <=> 算子）
 CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING hnsw (embedding vector_cosine_ops);
+
+-- ===== M3 知识图谱：主题-笔记图（FR-14，关系表自建，不上 Neo4j）=====
+CREATE TABLE IF NOT EXISTS graph_nodes (
+    id        BIGSERIAL PRIMARY KEY,
+    name      VARCHAR(500) NOT NULL,
+    node_type VARCHAR(20)  NOT NULL,           -- TOPIC（主题）/ NOTE（笔记）
+    doc_id    BIGINT REFERENCES documents(id) ON DELETE CASCADE  -- 仅 NOTE 有
+);
+-- 唯一性用表达式索引（UNIQUE 约束不支持 COALESCE）
+CREATE UNIQUE INDEX IF NOT EXISTS uq_graph_nodes
+    ON graph_nodes (name, node_type, COALESCE(doc_id, 0));
+
+CREATE TABLE IF NOT EXISTS graph_edges (
+    id            BIGSERIAL PRIMARY KEY,
+    from_node_id  BIGINT NOT NULL REFERENCES graph_nodes(id) ON DELETE CASCADE,
+    to_node_id    BIGINT NOT NULL REFERENCES graph_nodes(id) ON DELETE CASCADE,
+    relation_type VARCHAR(30) NOT NULL,        -- PARENT（主题层级）/ CONTAINS（主题含笔记）
+    UNIQUE (from_node_id, to_node_id, relation_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_graph_edges_from ON graph_edges(from_node_id);
+CREATE INDEX IF NOT EXISTS idx_graph_edges_to ON graph_edges(to_node_id);

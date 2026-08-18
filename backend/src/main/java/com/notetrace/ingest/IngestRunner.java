@@ -7,8 +7,10 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import com.notetrace.graph.GraphBuilderService;
+
 /**
- * 应用启动时自动扫描入库（FR-1 启动扫描）。入库失败不影响应用启动。
+ * 应用启动时自动扫描入库（FR-1 启动扫描）并重建知识图谱。失败不影响应用启动。
  * @Order(1)：先于评估运行器执行，保证 --eval 时库中已有数据。
  */
 @Component
@@ -18,15 +20,18 @@ public class IngestRunner implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(IngestRunner.class);
 
     private final IngestService ingestService;
+    private final GraphBuilderService graphBuilderService;
 
-    public IngestRunner(IngestService ingestService) {
+    public IngestRunner(IngestService ingestService, GraphBuilderService graphBuilderService) {
         this.ingestService = ingestService;
+        this.graphBuilderService = graphBuilderService;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         try {
             ingestService.ingestAll();
+            graphBuilderService.build();
         } catch (Exception e) {
             log.warn("启动入库失败（不影响启动）: {}", e.getMessage());
         }

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>知识图谱 · NoteTrace 知溯</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #222; }
+        h1 { font-size: 22px; }
+        nav a { margin-right: 16px; color: #2d6cdf; text-decoration: none; font-size: 14px; }
+        .cols { display: flex; gap: 24px; margin-top: 14px; }
+        .col { flex: 1; min-width: 0; }
+        h3 { font-size: 15px; color: #555; }
+        ul { list-style: none; padding: 0; margin: 8px 0; }
+        li { padding: 4px 8px; border-radius: 4px; font-size: 14px; }
+        li.topic a { color: #2d6cdf; text-decoration: none; }
+        li.topic a:hover { text-decoration: underline; }
+        li.note { color: #444; }
+        li.selected { background: #eef4ff; }
+        .depth-0 { padding-left: 0; } .depth-1 { padding-left: 18px; } .depth-2 { padding-left: 36px; }
+        .depth-3 { padding-left: 54px; } .depth-4 { padding-left: 72px; } .depth-5 { padding-left: 90px; }
+        .empty { color: #999; font-size: 13px; }
+        .hint { color: #999; font-size: 12px; margin-top: 18px; }
+    </style>
+</head>
+<body>
+<h1>知识图谱（主题 → 笔记）</h1>
+<nav>
+    <a href="/">问答</a>
+    <a href="/documents">入库状态</a>
+    <a href="/graph">知识图谱</a>
+</nav>
+
+<div class="cols">
+    <div class="col">
+        <h3>主题树（<span th:text="${#lists.size(topics)}">0</span>）</h3>
+        <ul>
+            <li th:each="t : ${topics}" th:class="'topic depth-' + ${t.name.split('/').length - 1}"
+                th:classappend="${selectedTopic == t.name} ? ' selected'">
+                <a th:href="@{/graph(topic=${t.name})}" th:text="${t.name}">主题</a>
+            </li>
+        </ul>
+        <p class="empty" th:if="${topics.isEmpty()}">暂无主题，先导入笔记。</p>
+    </div>
+    <div class="col">
+        <h3 th:if="${selectedTopic}" th:text="'「' + ${selectedTopic} + '」下的笔记'">主题笔记</h3>
+        <ul th:if="${selectedTopic}">
+            <li class="note" th:each="n : ${topicNotes}" th:text="${n.sourcePath}">笔记</li>
+        </ul>
+        <p class="empty" th:if="${selectedTopic and topicNotes.isEmpty()}">该主题下暂无笔记。</p>
+
+        <h3 th:if="${!selectedTopic}">全部笔记（<span th:text="${#lists.size(notes)}">0</span>）</h3>
+        <ul th:if="${!selectedTopic}">
+            <li class="note" th:each="n : ${notes}" th:text="${n.sourcePath}">笔记</li>
+        </ul>
+    </div>
+</div>
+
+<p class="hint">主题来自笔记的章节路径层级。点击左侧主题查看其（含子主题）关联的笔记。LLM 实体抽取（概念级关系）为后续增强。</p>
+</body>
+</html>
