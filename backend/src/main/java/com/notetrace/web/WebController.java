@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.notetrace.chunk.ChunkRepository;
 import com.notetrace.document.Document;
 import com.notetrace.document.DocumentRepository;
+import com.notetrace.graph.GraphBuilderService;
 import com.notetrace.graph.GraphService;
 import com.notetrace.ingest.IngestService;
 import com.notetrace.qa.QaService;
@@ -43,6 +44,7 @@ public class WebController {
     private final ChunkRepository chunkRepository;
     private final IngestService ingestService;
     private final GraphService graphService;
+    private final GraphBuilderService graphBuilderService;
     private final Path ingestDir;
 
     public WebController(QaService qaService,
@@ -50,12 +52,14 @@ public class WebController {
                          ChunkRepository chunkRepository,
                          IngestService ingestService,
                          GraphService graphService,
+                         GraphBuilderService graphBuilderService,
                          @Value("${notetrace.ingest.dir}") String ingestDir) {
         this.qaService = qaService;
         this.documentRepository = documentRepository;
         this.chunkRepository = chunkRepository;
         this.ingestService = ingestService;
         this.graphService = graphService;
+        this.graphBuilderService = graphBuilderService;
         this.ingestDir = Paths.get(ingestDir);
     }
 
@@ -106,6 +110,7 @@ public class WebController {
             Files.createDirectories(ingestDir);
             file.transferTo(target);
             boolean processed = ingestService.ingestFile(target);
+            graphBuilderService.build(); // 图谱同步更新（含新文档主题）
             log.info("网页上传: {} (processed={})", name, processed);
         } catch (IOException e) {
             log.error("上传失败: {}", e.getMessage());
@@ -129,6 +134,7 @@ public class WebController {
             log.error("删除磁盘文件失败: {}", e.getMessage());
         }
         documentRepository.findBySourcePath(sourcePath).ifPresent(documentRepository::delete);
+        graphBuilderService.build(); // 图谱同步重建（清除孤儿主题与笔记节点）
         log.info("网页删除: {}", sourcePath);
         return "redirect:/documents";
     }

@@ -31,9 +31,14 @@ public class IngestRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         try {
             ingestService.ingestAll();
-            graphBuilderService.build();
         } catch (Exception e) {
             log.warn("启动入库失败（不影响启动）: {}", e.getMessage());
+        }
+        // 图谱构建独立 try：入库部分成功后图仍重建（避免异常互相拖累）
+        try {
+            graphBuilderService.build();
+        } catch (Exception e) {
+            log.warn("图谱构建失败（不影响启动）: {}", e.getMessage());
         }
     }
 }

@@ -33,8 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING hnsw (embedding 
 -- ===== M3 知识图谱：主题-笔记图（FR-14，关系表自建，不上 Neo4j）=====
 CREATE TABLE IF NOT EXISTS graph_nodes (
     id        BIGSERIAL PRIMARY KEY,
-    name      VARCHAR(500) NOT NULL,
-    node_type VARCHAR(20)  NOT NULL,           -- TOPIC（主题）/ NOTE（笔记）
+    name      VARCHAR(2000) NOT NULL,           -- 与 chunks.section_path 上限一致
+    node_type VARCHAR(20)   NOT NULL,           -- TOPIC（主题）/ NOTE（笔记）
     doc_id    BIGINT REFERENCES documents(id) ON DELETE CASCADE  -- 仅 NOTE 有
 );
 -- 唯一性用表达式索引（UNIQUE 约束不支持 COALESCE）
