@@ -28,7 +28,7 @@ notetrace:
     ollama:
       base-url: http://localhost:11434
       model: bge-m3              # 嵌入模型
-      chat-model: qwen2.5:3b     # 本地生成模型（可换 qwen2.5:7b）
+      chat-model: qwen2.5:7b     # 本地生成模型（原 3b 已换 7b，效果更好）
     deepseek:
       base-url: https://api.deepseek.com
       model: deepseek-chat

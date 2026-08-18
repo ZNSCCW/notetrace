@@ -82,19 +82,24 @@ public class IngestService {
                     .toList();
         }
         // 删除检测：磁盘上已不存在的文档，同步删除库记录（chunks 由外键 CASCADE 清理）
+        // 安全保护：磁盘扫描为空（目录异常/环境变量失效）时跳过，防止误清整个知识库
         Set<String> diskPaths = files.stream()
                 .map(f -> ingestDir.relativize(f).toString().replace('\\', '/'))
                 .collect(java.util.stream.Collectors.toSet());
         int deleted = 0;
-        for (Document doc : documentRepository.findAll()) {
-            if (!diskPaths.contains(doc.getSourcePath())) {
-                documentRepository.delete(doc);
-                log.info("删除已移除的文档: {}", doc.getSourcePath());
-                deleted++;
+        if (!files.isEmpty()) {
+            for (Document doc : documentRepository.findAll()) {
+                if (!diskPaths.contains(doc.getSourcePath())) {
+                    documentRepository.delete(doc);
+                    log.info("删除已移除的文档: {}", doc.getSourcePath());
+                    deleted++;
+                }
             }
-        }
-        if (deleted > 0) {
-            log.info("删除检测: 清理 {} 个已删除文档", deleted);
+            if (deleted > 0) {
+                log.info("删除检测: 清理 {} 个已删除文档", deleted);
+            }
+        } else {
+            log.warn("磁盘扫描为空，跳过删除检测（共 {} 条库记录保留）", documentRepository.count());
         }
 
         int processed = 0;

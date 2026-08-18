@@ -9,4 +9,5 @@ if not defined DEEPSEEK_API_KEY (
 )
 echo Ingest dir: %NOTETRACE_INGEST_DIR%
 echo Starting NoteTrace... (http://localhost:8081)
-mvn -f backend\pom.xml spring-boot:run
+REM 透传额外参数，如: start.bat -Dspring-boot.run.arguments=--eval
+mvn -f backend\pom.xml spring-boot:run %*
