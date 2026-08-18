@@ -7,30 +7,57 @@
         body { font-family: "Microsoft YaHei", sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; color: #222; }
         h1 { font-size: 22px; }
         nav a { margin-right: 16px; color: #2d6cdf; text-decoration: none; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+        .upload { background: #f7f8fa; border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+        .upload input[type=file] { font-size: 13px; }
+        .upload button { margin-left: 10px; padding: 6px 16px; background: #2d6cdf; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+        .msg { color: #d03050; font-size: 13px; margin: 8px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
         th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; }
         th { color: #666; font-weight: 600; }
         .ok { color: #1a9c4b; }
         .fail { color: #d03050; }
+        .del { color: #d03050; border: 1px solid #f0c4c4; background: #fff; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+        .del:hover { background: #d03050; color: #fff; }
         .empty { color: #888; margin-top: 20px; }
+        .hint { color: #999; font-size: 12px; margin-top: 16px; }
     </style>
 </head>
 <body>
 <h1>入库状态</h1>
 <nav><a href="/">返回问答</a></nav>
 
+<div class="upload">
+    <form method="post" action="/documents/upload" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".md,.txt">
+        <button type="submit">上传并入库</button>
+    </form>
+</div>
+
+<p class="msg" th:if="${param.msg == 'empty'}">请先选择文件。</p>
+<p class="msg" th:if="${param.msg == 'ext'}">仅支持 .md / .txt 文件。</p>
+<p class="msg" th:if="${param.msg == 'error'}">上传失败，请查看后端日志。</p>
+
 <table th:if="${!documents.isEmpty()}">
-    <tr><th>文档</th><th>状态</th><th>chunks</th><th>更新时间</th></tr>
+    <tr><th>文档</th><th>状态</th><th>chunks</th><th>更新时间</th><th></th></tr>
     <tr th:each="d : ${documents}">
         <td th:text="${d.doc.sourcePath}"></td>
         <td>
             <span th:if="${d.doc.status == 'PROCESSED'}" class="ok" th:text="已处理">已处理</span>
-            <span th:if="${d.doc.status != 'PROCESSED'}" class="fail" th:text="${d.doc.status}">未知</span>
+            <span th:if="${d.doc.status == 'FAILED'}" class="fail" th:text="失败">失败</span>
+            <span th:if="${d.doc.status != 'PROCESSED' and d.doc.status != 'FAILED'}" th:text="${d.doc.status}">未知</span>
         </td>
         <td th:text="${d.chunkCount}"></td>
         <td th:text="${#temporals.format(d.doc.updatedAt, 'yyyy-MM-dd HH:mm')}"></td>
+        <td>
+            <form method="post" action="/documents/delete" onsubmit="return confirm('确认删除该笔记？将同时移除其索引。')">
+                <input type="hidden" name="sourcePath" th:value="${d.doc.sourcePath}">
+                <button class="del" type="submit">删除</button>
+            </form>
+        </td>
     </tr>
 </table>
-<p class="empty" th:if="${documents.isEmpty()}">暂无入库文档。请把 Markdown/文本笔记放入 data/notes 目录后重启应用，或检查入库目录配置。</p>
+<p class="empty" th:if="${documents.isEmpty()}">暂无入库文档。请上传 .md / .txt 文件，或放入 data/notes 目录后重启应用。</p>
+
+<p class="hint">提示：直接丢文件到 data/notes 目录同样会被识别（重启生效）；删除会同时移除磁盘文件与检索索引。</p>
 </body>
 </html>

@@ -1,6 +1,10 @@
 package com.notetrace.ingest;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -108,7 +112,7 @@ public class IngestService {
         String content;
         String hash;
         try {
-            content = Files.readString(file, StandardCharsets.UTF_8);
+            content = readFileSmart(file);
             hash = sha256(content);
         } catch (IOException e) {
             log.error("读取失败: {}: {}", file, e.getMessage());
@@ -120,7 +124,9 @@ public class IngestService {
         final String hashFinal = hash;
 
         Optional<Document> existing = documentRepository.findBySourcePath(rel);
-        if (existing.isPresent() && existing.get().getFileHash().equals(hashFinal)) {
+        // 仅当已成功处理且内容未变时跳过；FAILED 文件即使 hash 相同也要重试
+        if (existing.isPresent() && "PROCESSED".equals(existing.get().getStatus())
+                && existing.get().getFileHash().equals(hashFinal)) {
             return false; // 未变更，跳过（M2 增量更新基础）
         }
 
@@ -203,6 +209,22 @@ public class IngestService {
             sb.append(v[i]);
         }
         return sb.append(']').toString();
+    }
+
+    /**
+     * 智能读取：优先 UTF-8 严格解码；失败（如 Windows 记事本 ANSI/GBK 保存的文件）
+     * 回退 GBK 解码——兼容常见中文编码，杜绝乱码或 FAILED。
+     */
+    static String readFileSmart(Path file) throws IOException {
+        byte[] bytes = Files.readAllBytes(file);
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes))
+                    .toString();
+        } catch (CharacterCodingException e) {
+            return new String(bytes, Charset.forName("GBK"));
+        }
     }
 
     private static String sha256(String s) {
