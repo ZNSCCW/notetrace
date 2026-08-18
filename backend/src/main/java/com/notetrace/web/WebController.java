@@ -95,41 +95,71 @@ public class WebController {
         return "documents";
     }
 
-    /** 网页端上传笔记：保存到 data/notes 并立即入库 */
+    /** 网页端上传笔记（支持多选）：逐个保存到 data/notes 并入库，图谱重建一次 */
     @PostMapping("/documents/upload")
-    public String upload(@RequestParam("file") MultipartFile file, Model model) {
-        if (file == null || file.isEmpty()) {
+    public String upload(@RequestParam("file") MultipartFile[] files) {
+        if (files == null || files.length == 0 || files[0].isEmpty()) {
             return "redirect:/documents?msg=empty";
         }
-        String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
-        // 防路径遍历：只取文件名
-        String name = Paths.get(original).getFileName().toString();
-        String ext = ext(name);
-        if (!SUPPORTED_EXT.contains(ext)) {
-            return "redirect:/documents?msg=ext";
+        int saved = 0;
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+            // 防路径遍历：只取文件名
+            String name = Paths.get(original).getFileName().toString();
+            if (!SUPPORTED_EXT.contains(ext(name))) {
+                continue;
+            }
+            try {
+                Path target = ingestDir.resolve(name);
+                Files.createDirectories(ingestDir);
+                file.transferTo(target);
+                boolean processed = ingestService.ingestFile(target);
+                log.info("网页上传: {} (processed={})", name, processed);
+                saved++;
+            } catch (IOException e) {
+                log.error("上传失败: {}: {}", name, e.getMessage());
+            }
         }
-        try {
-            Path target = ingestDir.resolve(name);
-            Files.createDirectories(ingestDir);
-            file.transferTo(target);
-            boolean processed = ingestService.ingestFile(target);
+        if (saved > 0) {
             rebuildGraphQuietly(); // 图谱同步更新（含新文档主题），失败不拖累上传
-            log.info("网页上传: {} (processed={})", name, processed);
-        } catch (IOException e) {
-            log.error("上传失败: {}", e.getMessage());
-            return "redirect:/documents?msg=error";
         }
-        return "redirect:/documents";
+        return saved > 0 ? "redirect:/documents" : "redirect:/documents?msg=error";
     }
 
     /** 网页端删除笔记：删除磁盘文件 + 库记录（chunks 级联清理） */
     @PostMapping("/documents/delete")
     public String delete(@RequestParam String sourcePath) {
+        deleteDocument(sourcePath);
+        rebuildGraphQuietly();
+        return "redirect:/documents";
+    }
+
+    /** 网页端批量删除：勾选的多个笔记一次删除，图谱重建一次 */
+    @PostMapping("/documents/delete-batch")
+    public String deleteBatch(@RequestParam("sourcePaths") List<String> sourcePaths) {
+        if (sourcePaths != null) {
+            for (String sourcePath : sourcePaths) {
+                deleteDocument(sourcePath);
+            }
+            rebuildGraphQuietly();
+            log.info("网页批量删除: {} 个", sourcePaths.size());
+        }
+        return "redirect:/documents";
+    }
+
+    /** 删除单个文档（磁盘文件 + 库记录），带路径越界校验 */
+    private void deleteDocument(String sourcePath) {
+        if (sourcePath == null || sourcePath.isBlank()) {
+            return;
+        }
         // 防路径遍历：规范化后必须仍在入库目录内
         Path target = ingestDir.resolve(sourcePath).normalize();
         if (!target.startsWith(ingestDir.normalize())) {
             log.warn("拒绝越界删除: {}", sourcePath);
-            return "redirect:/documents";
+            return;
         }
         try {
             Files.deleteIfExists(target);
@@ -137,9 +167,7 @@ public class WebController {
             log.error("删除磁盘文件失败: {}", e.getMessage());
         }
         documentRepository.findBySourcePath(sourcePath).ifPresent(documentRepository::delete);
-        rebuildGraphQuietly(); // 图谱同步重建（清除孤儿主题与笔记节点），失败不拖累删除
         log.info("网页删除: {}", sourcePath);
-        return "redirect:/documents";
     }
 
     /** 图谱重建的容错封装：失败仅记日志，不影响上传/删除的成功结果 */
