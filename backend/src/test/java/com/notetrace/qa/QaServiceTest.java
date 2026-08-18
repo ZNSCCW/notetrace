@@ -71,7 +71,7 @@ class QaServiceTest {
     @Test
     void emptySearchResultReturnsFallbackWithoutCallingChat() {
         VectorSearchService search = mock(VectorSearchService.class);
-        when(search.search("知识库外的问题", 8)).thenReturn(List.of());
+        when(search.search("知识库外的问题", 12)).thenReturn(List.of());
         ChatRouter router = new ChatRouter(
                 mock(DeepSeekChatProvider.class), mock(OllamaChatProvider.class), mock(MockChatProvider.class));
         QaService qa = new QaService(search, new StubReranker(), router);

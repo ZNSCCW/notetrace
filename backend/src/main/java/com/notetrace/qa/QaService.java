@@ -29,7 +29,7 @@ import com.notetrace.search.VectorSearchService;
 @Service
 public class QaService {
 
-    private static final int RETRIEVE_K = 8;
+    private static final int RETRIEVE_K = 12;
     private static final int RERANK_K = 5;
     private static final Pattern REF_PATTERN = Pattern.compile("\\[(\\d+)]");
 

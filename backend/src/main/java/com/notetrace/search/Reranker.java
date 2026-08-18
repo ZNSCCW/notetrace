@@ -48,7 +48,7 @@ public class Reranker {
                 .toList();
     }
 
-    /** 提取查询关键词：连续中文字符串 + 英文单词（小写），去掉停用词 */
+    /** 提取查询关键词：英文单词（>=2 字符）+ 中文 bigram（2 字滑动窗口），过滤停用字 */
     Set<String> extractKeywords(String query) {
         Set<String> keywords = new HashSet<>();
         String lower = query.toLowerCase();
@@ -58,14 +58,30 @@ public class Reranker {
                 keywords.add(word);
             }
         }
-        // 中文：按非汉字切分后取 2 字以上片段
-        for (String seg : lower.split("[^\\u4e00-\\u9fa5]+")) {
-            if (seg.length() >= 2) {
-                keywords.add(seg);
+        // 中文 bigram：2 字滑动窗口；含停用字的窗口丢弃（避免噪音关键词）
+        String cn = lower.replaceAll("[^\\u4e00-\\u9fa5]", "");
+        if (cn.length() >= 2) {
+            for (int i = 0; i + 2 <= cn.length(); i++) {
+                String bigram = cn.substring(i, i + 2);
+                if (!containsStopChar(bigram)) {
+                    keywords.add(bigram);
+                }
             }
         }
         keywords.removeAll(STOP_WORDS);
         return keywords;
+    }
+
+    /** 中文停用字：含任一字的中文 bigram 不作为关键词 */
+    private static final String STOP_CHARS = "的了是在与和或吗呢请一个这那为么";
+
+    private boolean containsStopChar(String s) {
+        for (char c : s.toCharArray()) {
+            if (STOP_CHARS.indexOf(c) >= 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private record Scored(SearchHit hit, double score) {

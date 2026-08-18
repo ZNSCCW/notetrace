@@ -13,13 +13,14 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import com.notetrace.search.Reranker;
 import com.notetrace.search.SearchHit;
 import com.notetrace.search.VectorSearchService;
 
 /**
  * 检索评估运行器（PRD 13.2）：java -jar ... --eval 触发。
- * 读取 eval-questions.csv（问题/期望文档/期望章节），对每条问题跑 Top-5 检索，
- * 检查期望文档是否命中，输出 Top-5 文档命中率——切分/重排策略调整后的回归指标。
+ * 读取 eval-questions.csv（问题/期望文档/期望章节），对每条问题跑与问答一致的流程
+ * （混合检索 Top-12 → 重排 Top-5），检查期望文档是否命中，输出命中率。
  * @Order(2)：在 IngestRunner 之后执行，避免对空库产出假评估。
  */
 @Component
@@ -27,12 +28,15 @@ import com.notetrace.search.VectorSearchService;
 public class EvalRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(EvalRunner.class);
+    private static final int RETRIEVE_K = 12;
     private static final int TOP_K = 5;
 
     private final VectorSearchService vectorSearchService;
+    private final Reranker reranker;
 
-    public EvalRunner(VectorSearchService vectorSearchService) {
+    public EvalRunner(VectorSearchService vectorSearchService, Reranker reranker) {
         this.vectorSearchService = vectorSearchService;
+        this.reranker = reranker;
     }
 
     @Override
@@ -47,7 +51,8 @@ public class EvalRunner implements ApplicationRunner {
         }
         int hit = 0;
         for (EvalItem item : items) {
-            List<SearchHit> top = vectorSearchService.search(item.question(), TOP_K);
+            List<SearchHit> top = reranker.rerank(item.question(),
+                    vectorSearchService.search(item.question(), RETRIEVE_K), TOP_K);
             boolean docHit = top.stream().anyMatch(h -> h.documentTitle().equals(item.expectedDoc()));
             boolean sectionHit = top.stream().anyMatch(h ->
                     h.documentTitle().equals(item.expectedDoc())

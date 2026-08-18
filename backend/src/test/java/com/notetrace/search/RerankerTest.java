@@ -16,12 +16,19 @@ class RerankerTest {
 
     @Test
     void extractsChineseAndEnglishKeywords() {
+        // 英文单词保留；中文按 2 字窗口提取，含停用字的窗口丢弃
         assertThat(reranker.extractKeywords("Spring Security 为什么 401")).contains(
                 "spring", "security", "401");
-        // 停用词被剔除（"为什么" 在停用词表）
         assertThat(reranker.extractKeywords("Spring Security 为什么 401")).doesNotContain("为什么");
-        assertThat(reranker.extractKeywords("介绍一下 HashMap 的实现")).contains("hashmap", "的实现");
-        assertThat(reranker.extractKeywords("介绍一下 HashMap 的实现")).doesNotContain("介绍", "一下", "为什么");
+        assertThat(reranker.extractKeywords("介绍一下 HashMap 的实现")).contains("hashmap", "实现");
+        assertThat(reranker.extractKeywords("介绍一下 HashMap 的实现")).doesNotContain("介绍", "一下", "的实", "为什么");
+    }
+
+    @Test
+    void longChineseQueryProducesUsefulBigrams() {
+        // 长查询不再整句作关键词，而是可命中的 2 字窗口（修复大括号 MISS 的关键）
+        assertThat(reranker.extractKeywords("新手阶段为什么建议永远写大括号"))
+                .contains("大括", "括号", "新手", "阶段", "建议", "永远");
     }
 
     @Test
