@@ -39,13 +39,8 @@
     <div class="graph-cols" style="margin-top:16px;">
         <div class="panel">
             <h2 class="section-title">主题树（<span th:text="${#lists.size(topics)}">0</span>）</h2>
-            <ul class="topic-tree">
-                <li th:each="t : ${topics}" th:class="'depth-' + ${t.name.split('/').length - 1}"
-                    th:classappend="${selectedTopic == t.name} ? ' selected'">
-                    <a th:href="@{/graph(topic=${t.name})}" th:text="${t.name}">主题</a>
-                </li>
-            </ul>
-            <p class="empty" th:if="${topics.isEmpty()}">暂无主题，先导入笔记。</p>
+            <div id="topic-tree"></div>
+            <noscript><p class="hint">需启用 JavaScript 查看折叠树。</p></noscript>
         </div>
 
         <div>
@@ -102,6 +97,72 @@
     </div>
 </main>
 
+<script th:inline="javascript">
+var TOPIC_DATA = /*[[${topics}]]*/ [];
+var SELECTED_TOPIC = /*[[${selectedTopic}]]*/ null;
+</script>
+<script>
+(function () {
+    var el = document.getElementById('topic-tree');
+    if (!el) { return; }
+    // 路径列表 → 树
+    var root = {};
+    TOPIC_DATA.forEach(function (t) {
+        var segs = t.name.split('/');
+        var node = root, path = '';
+        segs.forEach(function (s) {
+            path = path ? path + '/' + s : s;
+            if (!node[s]) { node[s] = { path: path, children: {} }; }
+            node = node[s].children;
+        });
+    });
+    function render(children, container, opened) {
+        Object.keys(children).sort().forEach(function (k) {
+            var n = children[k];
+            var hasChildren = Object.keys(n.children).length > 0;
+            var li = document.createElement('li');
+            li.className = 'tree-node';
+            if (hasChildren) {
+                var open = opened.indexOf(n.path) >= 0;
+                var caret = document.createElement('span');
+                caret.className = 'caret' + (open ? ' open' : '');
+                caret.textContent = open ? '▾' : '▸';
+                caret.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); toggle(li); });
+                li.appendChild(caret);
+            }
+            var a = document.createElement('a');
+            a.href = '/graph?topic=' + encodeURIComponent(n.path);
+            a.textContent = k;
+            if (SELECTED_TOPIC === n.path) { a.className = 'selected'; }
+            li.appendChild(a);
+            if (hasChildren) {
+                var ul = document.createElement('ul');
+                ul.className = 'nested' + (opened.indexOf(n.path) >= 0 ? ' open' : '');
+                render(n.children, ul, opened);
+                li.appendChild(ul);
+            }
+            container.appendChild(li);
+        });
+    }
+    function toggle(li) {
+        var ul = li.querySelector('ul.nested');
+        var caret = li.querySelector('span.caret');
+        if (!ul) { return; }
+        var open = ul.classList.contains('open');
+        ul.classList.toggle('open', !open);
+        caret.classList.toggle('open', !open);
+        caret.textContent = open ? '▸' : '▾';
+    }
+    // 选中主题的祖先路径自动展开
+    var opened = [];
+    if (SELECTED_TOPIC) {
+        var segs = SELECTED_TOPIC.split('/');
+        var p = '';
+        segs.forEach(function (s) { p = p ? p + '/' + s : s; opened.push(p); });
+    }
+    render(root, el, opened);
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
 <script>
 (function () {

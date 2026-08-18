@@ -219,6 +219,22 @@ body {
 .depth-2 { padding-left: 32px !important; } .depth-3 { padding-left: 48px !important; }
 .depth-4 { padding-left: 64px !important; } .depth-5 { padding-left: 80px !important; }
 
+/* ---------- 折叠主题树（M4） ---------- */
+#topic-tree { list-style: none; margin: 0; padding: 0; }
+#topic-tree ul { list-style: none; margin: 0; padding: 0 0 0 18px; }
+#topic-tree li { margin: 0; }
+.tree-node { padding: 2px 0; }
+.tree-node .caret {
+  display: inline-block; width: 18px; color: var(--text-tertiary);
+  cursor: pointer; user-select: none; font-size: 11px; text-align: center;
+}
+.tree-node .caret:hover { color: var(--primary); }
+.tree-node a { color: var(--text); text-decoration: none; font-size: var(--text-base); padding: 2px 4px; border-radius: var(--radius-sm); }
+.tree-node a:hover { color: var(--primary); background: var(--bg); }
+.tree-node a.selected { color: var(--primary); background: var(--primary-soft); font-weight: 600; }
+.nested { display: none; }
+.nested.open { display: block; }
+
 @media (max-width: 720px) {
   .graph-cols { grid-template-columns: 1fr; }
 }
