@@ -10,6 +10,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.notetrace.ai.ChatProvider;
+import com.notetrace.ai.ChatRouter;
+import com.notetrace.ai.deepseek.DeepSeekChatProvider;
+import com.notetrace.ai.mock.MockChatProvider;
+import com.notetrace.ai.ollama.OllamaChatProvider;
 import com.notetrace.qa.QaService.QaResult;
 import com.notetrace.qa.QaService.Reference;
 import com.notetrace.search.SearchHit;
@@ -24,8 +28,8 @@ class QaServiceTest {
         return new SearchHit(id, 1L, "并发笔记.md", content, "线程池/拒绝策略", 3, 5, score);
     }
 
-    private static Reference ref(long chunkId, String title, String path, int start, int end) {
-        return new Reference(chunkId, title, path, start, end, "摘要", "原文全文");
+    private static Reference ref(int index, long chunkId, String title, String path, int start, int end) {
+        return new Reference(index, chunkId, title, path, start, end, "摘要", "原文全文");
     }
 
     @Test
@@ -68,8 +72,9 @@ class QaServiceTest {
     void emptySearchResultReturnsFallbackWithoutCallingChat() {
         VectorSearchService search = mock(VectorSearchService.class);
         when(search.search("知识库外的问题", 8)).thenReturn(List.of());
-        ChatProvider chat = mock(ChatProvider.class);
-        QaService qa = new QaService(search, new StubReranker(), chat);
+        ChatRouter router = new ChatRouter(
+                mock(DeepSeekChatProvider.class), mock(OllamaChatProvider.class), mock(MockChatProvider.class));
+        QaService qa = new QaService(search, new StubReranker(), router);
 
         QaResult result = qa.ask("知识库外的问题");
         assertThat(result.answer()).contains("没有相关内容");

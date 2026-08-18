@@ -24,10 +24,11 @@ notetrace:
     dir: ${NOTETRACE_INGEST_DIR:data/notes}   # 入库目录（真实笔记，不进 git）；可用环境变量 NOTETRACE_INGEST_DIR 覆盖
   ai:
     embedding-provider: ollama # mock | ollama（本地 bge-m3，免费）
-    chat-provider: deepseek     # mock | deepseek
+    chat-provider: deepseek     # mock | deepseek（仅开发兜底，UI 可切换 api/local）
     ollama:
       base-url: http://localhost:11434
-      model: bge-m3
+      model: bge-m3              # 嵌入模型
+      chat-model: qwen2.5:3b     # 本地生成模型（可换 qwen2.5:7b）
     deepseek:
       base-url: https://api.deepseek.com
       model: deepseek-chat

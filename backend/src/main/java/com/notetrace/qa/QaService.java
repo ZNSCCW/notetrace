@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
 import com.notetrace.ai.ChatProvider;
+import com.notetrace.ai.ChatRouter;
 import com.notetrace.search.Reranker;
 import com.notetrace.search.SearchHit;
 import com.notetrace.search.VectorSearchService;
@@ -41,24 +43,28 @@ public class QaService {
 
     private final VectorSearchService vectorSearchService;
     private final Reranker reranker;
-    private final ChatProvider chatProvider;
+    private final ChatRouter chatRouter;
 
-    public QaService(VectorSearchService vectorSearchService, Reranker reranker, ChatProvider chatProvider) {
+    public QaService(VectorSearchService vectorSearchService, Reranker reranker, ChatRouter chatRouter) {
         this.vectorSearchService = vectorSearchService;
         this.reranker = reranker;
-        this.chatProvider = chatProvider;
+        this.chatRouter = chatRouter;
     }
 
-    /** 溯源引用（UI 跳转定位用） */
-    public record Reference(Long chunkId, String documentTitle, String sectionPath,
+    /** 溯源引用（UI 跳转定位用）。index = 候选编号（[n] 中的 n），recommended 为 -1 */
+    public record Reference(Integer index, Long chunkId, String documentTitle, String sectionPath,
                             int startLine, int endLine, String excerpt, String fullContent) {
     }
 
-    /** 问答结果：回答正文 + 校验后的引用列表 */
-    public record QaResult(String answer, List<Reference> references) {
+    /** 问答结果：回答正文 + 校验后的引用 + 相关笔记推荐 */
+    public record QaResult(String answer, List<Reference> references, List<Reference> recommended) {
+        public QaResult(String answer, List<Reference> references) {
+            this(answer, references, List.of());
+        }
     }
 
-    public QaResult ask(String question) {
+    /** 问答：aiChoice = api | local | mock（默认 api） */
+    public QaResult ask(String question, String aiChoice) {
         if (question == null || question.isBlank()) {
             return new QaResult("请输入问题。", List.of());
         }
@@ -70,9 +76,16 @@ public class QaService {
         }
 
         List<SearchHit> top = reranker.rerank(question, hits, RERANK_K);
+        ChatProvider chatProvider = chatRouter.resolve(aiChoice);
         String rawAnswer = chatProvider.chat(SYSTEM_PROMPT, buildUserPrompt(top, question));
 
-        return new QaResult(rawAnswer, extractValidReferences(rawAnswer, top));
+        List<Reference> references = extractValidReferences(rawAnswer, top);
+        return new QaResult(rawAnswer, references, recommendRelated(top, references));
+    }
+
+    /** 兼容旧签名：默认 API */
+    public QaResult ask(String question) {
+        return ask(question, "api");
     }
 
     /** 构造编号候选 prompt（防伪核心） */
@@ -102,11 +115,38 @@ public class QaService {
             if (idx >= 1 && idx <= top.size()) {
                 SearchHit h = top.get(idx - 1);
                 refs.putIfAbsent(idx, new Reference(
-                        h.chunkId(), h.documentTitle(), h.sectionPath(),
+                        idx, h.chunkId(), h.documentTitle(), h.sectionPath(),
                         h.startLine(), h.endLine(), excerpt(h.content()), h.content()));
             }
         }
         return new ArrayList<>(refs.values());
+    }
+
+    /** 相关笔记推荐：检索 Top 中未被引用的 chunk，最多 2 条（轻量延展，图谱 M3 做深关联） */
+    static List<Reference> recommendRelated(List<SearchHit> top, List<Reference> cited) {
+        Set<Long> citedChunkIds = cited.stream().map(Reference::chunkId).collect(java.util.stream.Collectors.toSet());
+        List<Reference> result = new ArrayList<>();
+        for (SearchHit h : top) {
+            if (!citedChunkIds.contains(h.chunkId())) {
+                result.add(new Reference(-1, h.chunkId(), h.documentTitle(), h.sectionPath(),
+                        h.startLine(), h.endLine(), excerpt(h.content()), h.content()));
+                if (result.size() >= 2) {
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+
+    /** 回答正文 HTML 化：转义后把 [n] 替换为跳转到对应引用卡片的链接 */
+    public static String renderAnswerHtml(String answer) {
+        String escaped = escapeHtml(answer == null ? "" : answer);
+        return escaped.replaceAll("\\[(\\d+)]", "<a class=\"ref-link\" href=\"#ref-$1\">[$1]</a>");
+    }
+
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     private static String excerpt(String content) {

@@ -64,7 +64,7 @@ public class IngestService {
         this.transactionTemplate = transactionTemplate;
     }
 
-    /** 全量入库：扫描目录处理所有 md/txt。返回实际处理（新增或变更）的文件数 */
+    /** 全量入库：扫描目录处理所有 md/txt，并清理磁盘上已删除的文档。返回实际处理（新增或变更）的文件数 */
     public int ingestAll() throws IOException {
         if (!Files.isDirectory(ingestDir)) {
             Files.createDirectories(ingestDir);
@@ -77,13 +77,29 @@ public class IngestService {
                     .sorted(Comparator.comparing(Path::toString))
                     .toList();
         }
+        // 删除检测：磁盘上已不存在的文档，同步删除库记录（chunks 由外键 CASCADE 清理）
+        Set<String> diskPaths = files.stream()
+                .map(f -> ingestDir.relativize(f).toString().replace('\\', '/'))
+                .collect(java.util.stream.Collectors.toSet());
+        int deleted = 0;
+        for (Document doc : documentRepository.findAll()) {
+            if (!diskPaths.contains(doc.getSourcePath())) {
+                documentRepository.delete(doc);
+                log.info("删除已移除的文档: {}", doc.getSourcePath());
+                deleted++;
+            }
+        }
+        if (deleted > 0) {
+            log.info("删除检测: 清理 {} 个已删除文档", deleted);
+        }
+
         int processed = 0;
         for (Path file : files) {
             if (ingestFile(file)) {
                 processed++;
             }
         }
-        log.info("入库完成: {} 个文件变更/新增, 共扫描 {}", processed, files.size());
+        log.info("入库完成: {} 个文件变更/新增, 共扫描 {}, 清理删除 {}", processed, files.size(), deleted);
         return processed;
     }
 

@@ -40,11 +40,16 @@ public class WebController {
         return "qa";
     }
 
-    /** 问答（FR-10/FR-11）：提交问题，渲染带引用的回答 */
+    /** 问答（FR-10/FR-11）：提交问题与 AI 选择（api=DeepSeek / local=Ollama），渲染带引用回答 */
     @PostMapping("/qa")
-    public String ask(@RequestParam String question, Model model) {
+    public String ask(@RequestParam String question,
+                      @RequestParam(name = "ai", defaultValue = "api") String aiChoice,
+                      Model model) {
+        QaService.QaResult result = qaService.ask(question, aiChoice);
         model.addAttribute("question", question);
-        model.addAttribute("result", qaService.ask(question));
+        model.addAttribute("aiChoice", aiChoice);
+        model.addAttribute("result", result);
+        model.addAttribute("answerHtml", QaService.renderAnswerHtml(result.answer()));
         return "qa";
     }
 

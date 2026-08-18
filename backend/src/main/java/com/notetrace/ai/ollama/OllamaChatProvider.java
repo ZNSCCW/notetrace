@@ -1,11 +1,10 @@
-package com.notetrace.ai.deepseek;
+package com.notetrace.ai.ollama;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -16,42 +15,34 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.notetrace.ai.ChatProvider;
 
 /**
- * DeepSeek 生成实现（OpenAI 兼容协议，国内直连，成本极低）。
- * 依赖：环境变量 DEEPSEEK_API_KEY（不落库、不进 git）。
- * 在 Web UI 选择「调用 API」时使用；未配置 key 时调用会报错（提示走本地 AI）。
+ * 本地 Ollama 生成实现（免费、无限额、数据不出本机）。
+ * 默认模型 qwen2.5:3b（可用 notetrace.ai.ollama.chat-model 切换，如 qwen2.5:7b）。
+ * 在 Web UI 选择「本地 AI」时使用。
  */
-@Component("deepSeekChatProvider")
-public class DeepSeekChatProvider implements ChatProvider {
+@Component("ollamaChatProvider")
+public class OllamaChatProvider implements ChatProvider {
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
-    private final String apiKey;
     private final String model;
 
-    public DeepSeekChatProvider(@Value("${notetrace.ai.deepseek.base-url}") String baseUrl,
-                                @Value("${notetrace.ai.deepseek.model}") String model,
-                                @Value("${DEEPSEEK_API_KEY:}") String apiKey,
-                                ObjectMapper objectMapper) {
-        // 连接/读取超时：防止 API 无响应时问答请求无限挂起
+    public OllamaChatProvider(@Value("${notetrace.ai.ollama.base-url}") String baseUrl,
+                              @Value("${notetrace.ai.ollama.chat-model:qwen2.5:3b}") String model,
+                              ObjectMapper objectMapper) {
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
                 java.net.http.HttpClient.newBuilder()
-                        .connectTimeout(Duration.ofSeconds(10))
+                        .connectTimeout(Duration.ofSeconds(5))
                         .build());
-        factory.setReadTimeout(Duration.ofSeconds(120));
+        factory.setReadTimeout(Duration.ofSeconds(600)); // 本地生成较慢，放宽读取超时
         this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
         this.model = model;
-        this.apiKey = apiKey;
         this.objectMapper = objectMapper;
     }
 
     @Override
     public String chat(String systemPrompt, String userPrompt) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("DEEPSEEK_API_KEY 未配置（环境变量）");
-        }
         String body = restClient.post()
-                .uri("/chat/completions")
-                .header("Authorization", "Bearer " + apiKey)
+                .uri("/api/chat")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of(
                         "model", model,
@@ -63,9 +54,9 @@ public class DeepSeekChatProvider implements ChatProvider {
                 .body(String.class);
         try {
             JsonNode root = objectMapper.readTree(body);
-            return root.path("choices").get(0).path("message").path("content").asText();
+            return root.path("message").path("content").asText();
         } catch (Exception e) {
-            throw new IllegalStateException("解析 DeepSeek 响应失败", e);
+            throw new IllegalStateException("解析 Ollama 生成响应失败", e);
         }
     }
 }

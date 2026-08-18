@@ -1,16 +1,14 @@
 package com.notetrace.ai.mock;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import com.notetrace.ai.ChatProvider;
 
 /**
  * Mock 生成：无 DeepSeek key 时兜底，把候选内容原样返回（供接口联调）。
- * 生产切换 notetrace.ai.chat-provider=deepseek。
+ * 总是注册（路由 choice=mock 时使用），不影响 api/local 正常路径。
  */
-@Component
-@ConditionalOnProperty(name = "notetrace.ai.chat-provider", havingValue = "mock", matchIfMissing = true)
+@Component("mockChatProvider")
 public class MockChatProvider implements ChatProvider {
 
     @Override

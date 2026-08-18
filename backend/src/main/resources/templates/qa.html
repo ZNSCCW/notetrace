@@ -13,6 +13,10 @@
         button { padding: 10px 22px; font-size: 15px; background: #2d6cdf; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
         .answer { background: #f7f8fa; border-radius: 8px; padding: 16px; white-space: pre-wrap; line-height: 1.7; }
         .refs { margin-top: 12px; }
+        .ref-link { color: #d03050; font-weight: bold; text-decoration: none; }
+        .ref-link:hover { text-decoration: underline; }
+        .ai-choice { margin-top: 10px; font-size: 14px; color: #555; }
+        .ai-choice label { margin-right: 18px; }
         details { background: #fff; border: 1px solid #e3e6ea; border-radius: 6px; padding: 10px 14px; margin: 8px 0; }
         summary { cursor: pointer; color: #2d6cdf; font-size: 14px; }
         pre { white-space: pre-wrap; font-size: 13px; background: #fafbfc; padding: 10px; border-radius: 4px; }
@@ -30,13 +34,25 @@
     <input type="text" name="question" th:value="${question}"
            placeholder="提问，如：线程池的拒绝策略有哪些？">
     <button type="submit">提问</button>
+    <div class="ai-choice">
+        <label><input type="radio" name="ai" value="api" th:checked="${aiChoice == null or aiChoice == 'api'}"> 调用 API（DeepSeek）</label>
+        <label><input type="radio" name="ai" value="local" th:checked="${aiChoice == 'local'}"> 本地 AI（Ollama qwen）</label>
+    </div>
 </form>
 
-<div class="answer" th:if="${result}" th:text="${result.answer}"></div>
+<div class="answer" th:if="${answerHtml}" th:utext="${answerHtml}"></div>
 
 <div class="refs" th:if="${result != null and !result.references.isEmpty()}">
-    <h3>引用来源（点击展开原文核对）</h3>
-    <details th:each="r : ${result.references}">
+    <h3>引用来源（点击 [n] 或展开核对原文）</h3>
+    <details th:each="r : ${result.references}" th:id="'ref-' + ${r.index}">
+        <summary th:text="'[' + ${r.index} + '] ' + ${r.documentTitle} + ' / ' + ${r.sectionPath} + '（第 ' + ${r.startLine} + '-' + ${r.endLine} + ' 行）'"></summary>
+        <pre th:text="${r.fullContent}"></pre>
+    </details>
+</div>
+
+<div class="refs" th:if="${result != null and !result.recommended.isEmpty()}">
+    <h3>相关笔记</h3>
+    <details th:each="r : ${result.recommended}">
         <summary th:text="${r.documentTitle} + ' / ' + ${r.sectionPath} + '（第 ' + ${r.startLine} + '-' + ${r.endLine} + ' 行）'"></summary>
         <pre th:text="${r.fullContent}"></pre>
     </details>
