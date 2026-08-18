@@ -18,6 +18,8 @@ spring:
   sql:
     init:
       mode: always
+  thymeleaf:
+    cache: false   # 开发期关闭模板缓存，改模板即时生效
 
 notetrace:
   ingest:

@@ -148,14 +148,29 @@ public class WebController {
         }
     }
 
-    /** 图谱浏览页（FR-14/FR-15）：主题树 + 主题关联笔记 */
+    /** 图谱浏览页（FR-14/FR-15）：主题树 + 主题关联笔记 + 概念（M3.1） */
     @GetMapping("/graph")
-    public String graph(@RequestParam(name = "topic", required = false) String topic, Model model) {
+    public String graph(@RequestParam(name = "topic", required = false) String topic,
+                        @RequestParam(name = "concept", required = false) String concept,
+                        @RequestParam(name = "relX", required = false) String relX,
+                        @RequestParam(name = "relY", required = false) String relY,
+                        Model model) {
         model.addAttribute("topics", graphService.allTopics());
         model.addAttribute("notes", graphService.allNotes());
+        model.addAttribute("concepts", graphService.allConcepts());
         model.addAttribute("selectedTopic", topic);
         if (topic != null && !topic.isBlank()) {
             model.addAttribute("topicNotes", graphService.topicNotes(topic));
+            model.addAttribute("topicConcepts", graphService.topicConcepts(topic));
+        }
+        model.addAttribute("selectedConcept", concept);
+        if (concept != null && !concept.isBlank()) {
+            model.addAttribute("conceptNotes", graphService.conceptNotes(concept));
+        }
+        if (relX != null && !relX.isBlank() && relY != null && !relY.isBlank()) {
+            model.addAttribute("relX", relX);
+            model.addAttribute("relY", relY);
+            model.addAttribute("relationNotes", graphService.relationQuery(relX, relY));
         }
         return "graph";
     }
