@@ -44,10 +44,12 @@ ollama pull bge-m3
 setx DEEPSEEK_API_KEY "sk-xxx"
 
 # 4. 启动应用（默认 http://localhost:8081）
+#    Windows:  直接运行 start.bat（自动配置入库目录）
+#    Git Bash: bash start.sh
 mvn -f backend/pom.xml spring-boot:run
 ```
 
-> 入库目录：`data/notes/`（放你的 Markdown/文本笔记；该目录已在 .gitignore，**真实笔记不会进仓库**）。可用环境变量 `NOTETRACE_INGEST_DIR` 覆盖。
+> 入库目录：`data/notes/`（放你的 Markdown/文本笔记；该目录已在 .gitignore，**真实笔记不会进仓库**）。启动脚本自动指向项目根下的 `data/notes`；手动启动时可用环境变量 `NOTETRACE_INGEST_DIR` 覆盖。
 
 ## 使用
 
