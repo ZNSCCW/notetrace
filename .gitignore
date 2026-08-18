@@ -21,6 +21,7 @@ data/
 # ===== 内部开发文档（不进公开仓库）=====
 docs/PRD.md
 docs/self-use-checklist.md
+docs/interview-notes.md
 
 # ===== 日志与临时文件 =====
 *.log
