@@ -9,5 +9,5 @@ if not defined DEEPSEEK_API_KEY (
 )
 echo Ingest dir: %NOTETRACE_INGEST_DIR%
 echo Starting NoteTrace... (http://localhost:8081)
-REM 透传额外参数，如: start.bat -Dspring-boot.run.arguments=--eval
+REM Extra args pass-through, e.g.: start.bat -Dspring-boot.run.arguments=--eval
 mvn -f backend\pom.xml spring-boot:run %*
