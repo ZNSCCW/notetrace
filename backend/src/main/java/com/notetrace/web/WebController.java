@@ -64,7 +64,8 @@ public class WebController {
     }
 
     @GetMapping("/")
-    public String index() {
+    public String index(Model model) {
+        model.addAttribute("currentPage", "qa");
         return "qa";
     }
 
@@ -89,6 +90,7 @@ public class WebController {
                 .map(d -> new DocumentStatus(d, chunkRepository.countByDocumentId(d.getId())))
                 .toList();
         model.addAttribute("documents", rows);
+        model.addAttribute("currentPage", "documents");
         return "documents";
     }
 
@@ -172,6 +174,7 @@ public class WebController {
             model.addAttribute("relY", relY);
             model.addAttribute("relationNotes", graphService.relationQuery(relX, relY));
         }
+        model.addAttribute("currentPage", "graph");
         return "graph";
     }
 

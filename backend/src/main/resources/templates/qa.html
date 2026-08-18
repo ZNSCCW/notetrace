@@ -2,63 +2,65 @@
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>NoteTrace 知溯 · AI 个人知识库</title>
-    <style>
-        body { font-family: "Microsoft YaHei", sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; color: #222; }
-        h1 { font-size: 22px; }
-        h1 small { color: #888; font-weight: normal; font-size: 13px; }
-        nav a { margin-right: 16px; color: #2d6cdf; text-decoration: none; font-size: 14px; }
-        form { margin: 20px 0; }
-        input[type=text] { width: 72%; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 6px; }
-        button { padding: 10px 22px; font-size: 15px; background: #2d6cdf; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
-        .answer { background: #f7f8fa; border-radius: 8px; padding: 16px; white-space: pre-wrap; line-height: 1.7; }
-        .refs { margin-top: 12px; }
-        .ref-link { color: #d03050; font-weight: bold; text-decoration: none; }
-        .ref-link:hover { text-decoration: underline; }
-        .ai-choice { margin-top: 10px; font-size: 14px; color: #555; }
-        .ai-choice label { margin-right: 18px; }
-        details { background: #fff; border: 1px solid #e3e6ea; border-radius: 6px; padding: 10px 14px; margin: 8px 0; }
-        summary { cursor: pointer; color: #2d6cdf; font-size: 14px; }
-        pre { white-space: pre-wrap; font-size: 13px; background: #fafbfc; padding: 10px; border-radius: 4px; }
-        .hint { color: #888; font-size: 13px; margin-top: 24px; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>问答 · NoteTrace 知溯</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
-<h1>NoteTrace（知溯）<small>AI 个人知识库</small></h1>
-<nav>
-    <a href="/">问答</a>
-    <a href="/documents">入库状态</a>
-    <a href="/graph">知识图谱</a>
-</nav>
 
-<form method="post" action="/qa">
-    <input type="text" name="question" th:value="${question}"
-           placeholder="提问，如：线程池的拒绝策略有哪些？">
-    <button type="submit">提问</button>
-    <div class="ai-choice">
-        <label><input type="radio" name="ai" value="api" th:checked="${aiChoice == null or aiChoice == 'api'}"> 调用 API（DeepSeek）</label>
-        <label><input type="radio" name="ai" value="local" th:checked="${aiChoice == 'local'}"> 本地 AI（Ollama qwen）</label>
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">NoteTrace<span class="brand-sub">知溯 · AI 知识库</span></div>
+        <nav class="nav">
+            <a href="/" th:classappend="${currentPage == 'qa'} ? 'active'">问答</a>
+            <a href="/documents" th:classappend="${currentPage == 'documents'} ? 'active'">入库状态</a>
+            <a href="/graph" th:classappend="${currentPage == 'graph'} ? 'active'">知识图谱</a>
+        </nav>
     </div>
-</form>
+</header>
 
-<div class="answer" th:if="${answerHtml}" th:utext="${answerHtml}"></div>
+<main class="container">
+    <h1 class="page-title">向你的知识库提问</h1>
+    <p class="page-desc">回答基于已导入的笔记，每个结论都带可核对的来源。</p>
 
-<div class="refs" th:if="${result != null and !result.references.isEmpty()}">
-    <h3>引用来源（点击 [n] 或展开核对原文）</h3>
-    <details th:each="r : ${result.references}" th:id="'ref-' + ${r.index}">
-        <summary th:text="'[' + ${r.index} + '] ' + ${r.documentTitle} + ' / ' + ${r.sectionPath} + '（第 ' + ${r.startLine} + '-' + ${r.endLine} + ' 行）'"></summary>
-        <pre th:text="${r.fullContent}"></pre>
-    </details>
-</div>
+    <form method="post" action="/qa">
+        <div style="display:flex; gap:10px; align-items:stretch;">
+            <input type="text" class="input" name="question" th:value="${question}"
+                   placeholder="提问，如：线程池的拒绝策略有哪些？" style="flex:1;">
+            <button type="submit" class="btn">提问</button>
+        </div>
+        <div style="margin-top:12px;">
+            <span class="seg">
+                <label><input type="radio" name="ai" value="api" th:checked="${aiChoice == null or aiChoice == 'api'}"><span>调用 API（DeepSeek）</span></label>
+                <label><input type="radio" name="ai" value="local" th:checked="${aiChoice == 'local'}"><span>本地 AI（Ollama qwen）</span></label>
+            </span>
+        </div>
+    </form>
 
-<div class="refs" th:if="${result != null and !result.recommended.isEmpty()}">
-    <h3>相关笔记</h3>
-    <details th:each="r : ${result.recommended}">
-        <summary th:text="${r.documentTitle} + ' / ' + ${r.sectionPath} + '（第 ' + ${r.startLine} + '-' + ${r.endLine} + ' 行）'"></summary>
-        <pre th:text="${r.fullContent}"></pre>
-    </details>
-</div>
+    <div class="panel" style="margin-top:24px;" th:if="${answerHtml}">
+        <div class="answer" th:utext="${answerHtml}"></div>
+    </div>
 
-<p class="hint">回答由 LLM 生成，引用来源已校验，仍建议点击展开核对原文。</p>
+    <div class="panel" th:if="${result != null and !result.references.isEmpty()}">
+        <h2 class="section-title">引用来源（点击核对原文）</h2>
+        <div class="ref-list">
+            <details class="ref-item" th:each="r : ${result.references}" th:id="'ref-' + ${r.index}">
+                <summary th:text="'[' + ${r.index} + '] ' + ${r.documentTitle} + ' / ' + ${r.sectionPath} + '（第 ' + ${r.startLine} + '-' + ${r.endLine} + ' 行）'"></summary>
+                <pre th:text="${r.fullContent}"></pre>
+            </details>
+        </div>
+    </div>
+
+    <div class="panel" th:if="${result != null and !result.recommended.isEmpty()}">
+        <h2 class="section-title">相关笔记</h2>
+        <div class="ref-list">
+            <details class="ref-item" th:each="r : ${result.recommended}">
+                <summary th:text="${r.documentTitle} + ' / ' + ${r.sectionPath}"></summary>
+                <pre th:text="${r.fullContent}"></pre>
+            </details>
+        </div>
+    </div>
+</main>
+
 </body>
 </html>

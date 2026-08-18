@@ -2,97 +2,86 @@
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>知识图谱 · NoteTrace 知溯</title>
-    <style>
-        body { font-family: "Microsoft YaHei", sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #222; }
-        h1 { font-size: 22px; }
-        nav a { margin-right: 16px; color: #2d6cdf; text-decoration: none; font-size: 14px; }
-        .cols { display: flex; gap: 24px; margin-top: 14px; }
-        .col { flex: 1; min-width: 0; }
-        h3 { font-size: 15px; color: #555; }
-        ul { list-style: none; padding: 0; margin: 8px 0; }
-        li { padding: 4px 8px; border-radius: 4px; font-size: 14px; }
-        li.topic a { color: #2d6cdf; text-decoration: none; }
-        li.topic a:hover { text-decoration: underline; }
-        li.note { color: #444; }
-        li.selected { background: #eef4ff; }
-        .tags { list-style: none; padding: 0; margin: 8px 0; }
-        li.tag { display: inline-block; margin: 3px 6px 3px 0; padding: 2px 10px; background: #eef4ff; border-radius: 12px; font-size: 13px; }
-        li.tag a { color: #2d6cdf; text-decoration: none; }
-        .depth-0 { padding-left: 0; } .depth-1 { padding-left: 18px; } .depth-2 { padding-left: 36px; }
-        .depth-3 { padding-left: 54px; } .depth-4 { padding-left: 72px; } .depth-5 { padding-left: 90px; }
-        .empty { color: #999; font-size: 13px; }
-        .hint { color: #999; font-size: 12px; margin-top: 18px; }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
-<h1>知识图谱（主题 → 笔记）</h1>
-<nav>
-    <a href="/">问答</a>
-    <a href="/documents">入库状态</a>
-    <a href="/graph">知识图谱</a>
-</nav>
 
-<div class="cols">
-    <div class="col">
-        <h3>主题树（<span th:text="${#lists.size(topics)}">0</span>）</h3>
-        <ul>
-            <li th:each="t : ${topics}" th:class="'topic depth-' + ${t.name.split('/').length - 1}"
-                th:classappend="${selectedTopic == t.name} ? ' selected'">
-                <a th:href="@{/graph(topic=${t.name})}" th:text="${t.name}">主题</a>
-            </li>
-        </ul>
-        <p class="empty" th:if="${topics.isEmpty()}">暂无主题，先导入笔记。</p>
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">NoteTrace<span class="brand-sub">知溯 · AI 知识库</span></div>
+        <nav class="nav">
+            <a href="/" th:classappend="${currentPage == 'qa'} ? 'active'">问答</a>
+            <a href="/documents" th:classappend="${currentPage == 'documents'} ? 'active'">入库状态</a>
+            <a href="/graph" th:classappend="${currentPage == 'graph'} ? 'active'">知识图谱</a>
+        </nav>
     </div>
-    <div class="col">
-        <h3 th:if="${selectedTopic}" th:text="'「' + ${selectedTopic} + '」下的笔记'">主题笔记</h3>
-        <ul th:if="${selectedTopic}">
-            <li class="note" th:each="n : ${topicNotes}" th:text="${n.sourcePath}">笔记</li>
-        </ul>
-        <p class="empty" th:if="${selectedTopic != null and topicNotes.isEmpty()}">该主题下暂无笔记。</p>
-        <h4 th:if="${selectedTopic}" th:text="'涉及概念：' + ${#lists.size(topicConcepts)} + ' 个'">涉及概念</h4>
-        <ul th:if="${selectedTopic}" class="tags">
-            <li class="tag" th:each="c : ${topicConcepts}">
-                <a th:href="@{/graph(concept=${c.name})}" th:text="${c.name}">概念</a>
-            </li>
-        </ul>
+</header>
 
-        <h3 th:if="${selectedTopic == null}">全部笔记（<span th:text="${#lists.size(notes)}">0</span>）</h3>
-        <ul th:if="${selectedTopic == null}">
-            <li class="note" th:each="n : ${notes}" th:text="${n.sourcePath}">笔记</li>
-        </ul>
-    </div>
-</div>
+<main class="container">
+    <h1 class="page-title">知识图谱</h1>
+    <p class="page-desc">主题来自笔记章节路径；概念由 LLM 按文档抽取。点击主题或概念查看关联。</p>
 
-<div class="cols">
-    <div class="col">
-        <h3>概念（<span th:text="${#lists.size(concepts)}">0</span>，LLM 抽取）</h3>
-        <ul class="tags">
-            <li class="tag" th:each="c : ${concepts}">
-                <a th:href="@{/graph(concept=${c.name})}" th:text="${c.name}">概念</a>
-            </li>
-        </ul>
-        <p class="empty" th:if="${concepts.isEmpty()}">暂无概念（需 DeepSeek API 可用时抽取）。</p>
-        <h4 th:if="${selectedConcept}" th:text="'「' + ${selectedConcept} + '」出现在：'">概念笔记</h4>
-        <ul th:if="${selectedConcept}">
-            <li class="note" th:each="n : ${conceptNotes}" th:text="${n.sourcePath}">笔记</li>
-        </ul>
-    </div>
-    <div class="col">
-        <h3>关系问答（X 与 Y 共同出现的笔记）</h3>
-        <form method="get" action="/graph">
-            <input type="text" name="relX" th:value="${relX}" placeholder="概念 X，如：线程池" style="width:42%;padding:6px;">
-            <input type="text" name="relY" th:value="${relY}" placeholder="概念 Y，如：并发" style="width:42%;padding:6px;">
-            <button type="submit" style="padding:6px 12px;">查关系</button>
-        </form>
-        <ul th:if="${relationNotes != null}">
-            <li class="note" th:each="n : ${relationNotes}" th:text="${n.sourcePath}">笔记</li>
-        </ul>
-        <p class="empty" th:if="${relationNotes != null and relationNotes.isEmpty()}"
-           th:text="'没有同时出现「' + ${relX} + '」和「' + ${relY} + '」的笔记'">无结果</p>
-    </div>
-</div>
+    <div class="graph-cols">
+        <div class="panel">
+            <h2 class="section-title">主题树（<span th:text="${#lists.size(topics)}">0</span>）</h2>
+            <ul class="topic-tree">
+                <li th:each="t : ${topics}" th:class="'depth-' + ${t.name.split('/').length - 1}"
+                    th:classappend="${selectedTopic == t.name} ? ' selected'">
+                    <a th:href="@{/graph(topic=${t.name})}" th:text="${t.name}">主题</a>
+                </li>
+            </ul>
+            <p class="empty" th:if="${topics.isEmpty()}">暂无主题，先导入笔记。</p>
+        </div>
 
-<p class="hint">主题来自笔记章节路径；概念由 DeepSeek 按文档抽取（M3.1）。点击主题/概念查看关联，或输入两个概念查询共同出现的笔记。</p>
+        <div>
+            <div class="panel">
+                <h2 class="section-title" th:if="${selectedTopic}" th:text="'「' + ${selectedTopic} + '」下的笔记'">主题笔记</h2>
+                <p class="empty" th:if="${selectedTopic != null and topicNotes.isEmpty()}">该主题下暂无笔记。</p>
+                <ul class="topic-tree" th:if="${selectedTopic != null and !topicNotes.isEmpty()}">
+                    <li th:each="n : ${topicNotes}"><span class="muted" th:text="${n.sourcePath}">笔记</span></li>
+                </ul>
+                <div th:if="${selectedTopic != null and !topicConcepts.isEmpty()}" style="margin-top:16px;">
+                    <p class="section-title" th:text="'涉及概念（' + ${#lists.size(topicConcepts)} + '）'">涉及概念</p>
+                    <div class="tags">
+                        <span class="tag" th:each="c : ${topicConcepts}"><a th:href="@{/graph(concept=${c.name})}" th:text="${c.name}">概念</a></span>
+                    </div>
+                </div>
+                <h2 class="section-title" th:if="${selectedTopic == null}">全部笔记（<span th:text="${#lists.size(notes)}">0</span>）</h2>
+                <ul class="topic-tree" th:if="${selectedTopic == null and !notes.isEmpty()}">
+                    <li th:each="n : ${notes}"><span class="muted" th:text="${n.sourcePath}">笔记</span></li>
+                </ul>
+            </div>
+
+            <div class="panel" style="margin-top:16px;">
+                <h2 class="section-title">概念（<span th:text="${#lists.size(concepts)}">0</span> · LLM 抽取）</h2>
+                <div class="tags" th:if="${!concepts.isEmpty()}">
+                    <span class="tag" th:each="c : ${concepts}"><a th:href="@{/graph(concept=${c.name})}" th:text="${c.name}">概念</a></span>
+                </div>
+                <p class="empty" th:if="${concepts.isEmpty()}">暂无概念（需 DeepSeek API 可用时抽取）。</p>
+                <p class="section-title" th:if="${selectedConcept}" style="margin-top:16px;" th:text="'「' + ${selectedConcept} + '」出现在：'">概念笔记</p>
+                <ul class="topic-tree" th:if="${selectedConcept}">
+                    <li th:each="n : ${conceptNotes}"><span class="muted" th:text="${n.sourcePath}">笔记</span></li>
+                </ul>
+            </div>
+
+            <div class="panel" style="margin-top:16px;">
+                <h2 class="section-title">关系问答：两概念共同出现的笔记</h2>
+                <form method="get" action="/graph" style="display:flex; gap:8px;">
+                    <input type="text" class="input" name="relX" th:value="${relX}" placeholder="概念 X，如：线程池">
+                    <input type="text" class="input" name="relY" th:value="${relY}" placeholder="概念 Y，如：并发">
+                    <button type="submit" class="btn">查关系</button>
+                </form>
+                <ul class="topic-tree" th:if="${relationNotes != null and !relationNotes.isEmpty()}" style="margin-top:12px;">
+                    <li th:each="n : ${relationNotes}"><span class="muted" th:text="${n.sourcePath}">笔记</span></li>
+                </ul>
+                <p class="empty" th:if="${relationNotes != null and relationNotes.isEmpty()}"
+                   th:text="'没有同时出现「' + ${relX} + '」和「' + ${relY} + '」的笔记'">无结果</p>
+            </div>
+        </div>
+    </div>
+</main>
+
 </body>
 </html>

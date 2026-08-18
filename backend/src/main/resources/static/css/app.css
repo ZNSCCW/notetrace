@@ -1,0 +1,224 @@
+/* ============================================================
+   NoteTrace 设计系统（克制工具风）
+   单一品牌蓝 / 中性色板 / 明确排印层级 / 无装饰堆叠
+   ============================================================ */
+
+:root {
+  /* 色彩：品牌蓝 + 中性灰（非 AI 色板） */
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --border-strong: #d0d5dd;
+  --text: #1a1d23;
+  --text-secondary: #5b6470;
+  --text-tertiary: #9aa3af;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff4ff;
+  --success: #15803d;
+  --success-soft: #ecfdf3;
+  --danger: #b42318;
+  --danger-soft: #fef3f2;
+  --warning: #b54708;
+
+  /* 排印 */
+  --font: "Microsoft YaHei", "PingFang SC", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 22px;
+
+  /* 布局 */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 顶部导航（三页共用） ---------- */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 56px;
+}
+.brand {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.brand .brand-sub { color: var(--text-tertiary); font-weight: 400; font-size: var(--text-sm); margin-left: var(--space-2); }
+.nav { display: flex; gap: var(--space-1); }
+.nav a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--text-base);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.nav a:hover { color: var(--text); background: var(--bg); }
+.nav a.active { color: var(--primary); background: var(--primary-soft); font-weight: 600; }
+
+/* ---------- 页面容器 ---------- */
+.container { max-width: 960px; margin: 0 auto; padding: var(--space-6) var(--space-5) var(--space-7); }
+.page-title { font-size: var(--text-xl); font-weight: 700; margin: 0 0 var(--space-2); }
+.page-desc { color: var(--text-secondary); font-size: var(--text-base); margin: 0 0 var(--space-5); }
+
+/* ---------- 面板 / 卡片 ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  box-shadow: var(--shadow);
+}
+.panel + .panel { margin-top: var(--space-4); }
+.section-title { font-size: var(--text-base); font-weight: 600; margin: 0 0 var(--space-3); }
+.muted { color: var(--text-secondary); }
+.hint { color: var(--text-tertiary); font-size: var(--text-sm); }
+
+/* ---------- 表单 ---------- */
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: var(--text-base);
+  font-family: inherit;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.btn {
+  padding: 10px 20px;
+  font-size: var(--text-base);
+  font-family: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn:hover { background: var(--primary-hover); }
+.btn-danger {
+  color: var(--danger);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  font-weight: 500;
+  padding: 4px 12px;
+  font-size: var(--text-sm);
+}
+.btn-danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+
+/* AI 选择：分段控件（非胶囊装饰，是真实交互） */
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
+.seg label { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: var(--text-base); color: var(--text-secondary); cursor: pointer; background: var(--surface); transition: background 0.15s ease, color 0.15s ease; }
+.seg label + label { border-left: 1px solid var(--border); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg input:checked + span { color: var(--primary); font-weight: 600; }
+.seg label:has(input:checked) { background: var(--primary-soft); }
+
+/* ---------- 状态徽章 ---------- */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--text-sm); font-weight: 500; }
+.badge-ok { color: var(--success); background: var(--success-soft); }
+.badge-fail { color: var(--danger); background: var(--danger-soft); }
+.badge-muted { color: var(--text-secondary); background: var(--bg); }
+
+/* ---------- 表格 ---------- */
+.table { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
+.table th { text-align: left; color: var(--text-tertiary); font-weight: 600; font-size: var(--text-sm); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); }
+.table td { padding: var(--space-3); border-bottom: 1px solid var(--border); vertical-align: middle; }
+.table tr:last-child td { border-bottom: none; }
+
+/* ---------- 标签（概念/图谱） ---------- */
+.tags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.tag:hover { border-color: var(--primary); color: var(--primary); }
+.tag a { color: inherit; text-decoration: none; }
+
+/* ---------- 回答正文 ---------- */
+.answer { white-space: pre-wrap; line-height: 1.7; }
+.ref-link { color: var(--primary); font-weight: 700; text-decoration: none; }
+.ref-link:hover { text-decoration: underline; }
+
+/* ---------- 引用 / 相关笔记 列表 ---------- */
+.ref-list { border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.ref-item { border-bottom: 1px solid var(--border); padding: var(--space-3) var(--space-4); }
+.ref-item:last-child { border-bottom: none; }
+.ref-item summary { cursor: pointer; color: var(--primary); font-size: var(--text-base); }
+.ref-item pre {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+}
+
+/* ---------- 空态 / 提示 ---------- */
+.empty { color: var(--text-tertiary); font-size: var(--text-base); padding: var(--space-5) 0; }
+.msg-error { color: var(--danger); font-size: var(--text-sm); margin: var(--space-2) 0; }
+
+/* ---------- 图谱双栏 ---------- */
+.graph-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); align-items: start; }
+.graph-cols .panel { margin-top: 0; }
+.topic-tree { list-style: none; margin: 0; padding: 0; }
+.topic-tree li { padding: 3px 8px; border-radius: var(--radius-sm); font-size: var(--text-base); }
+.topic-tree li a { color: var(--text); text-decoration: none; display: block; }
+.topic-tree li:hover { background: var(--bg); }
+.topic-tree li a:hover { color: var(--primary); }
+.topic-tree li.selected { background: var(--primary-soft); }
+.topic-tree li.selected a { color: var(--primary); font-weight: 600; }
+.depth-0 { padding-left: 0 !important; } .depth-1 { padding-left: 16px !important; }
+.depth-2 { padding-left: 32px !important; } .depth-3 { padding-left: 48px !important; }
+.depth-4 { padding-left: 64px !important; } .depth-5 { padding-left: 80px !important; }
+
+@media (max-width: 720px) {
+  .graph-cols { grid-template-columns: 1fr; }
+}
